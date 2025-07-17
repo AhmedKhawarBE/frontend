@@ -320,8 +320,13 @@ export default function CompaniesPage() {
           }
         })
     : []
+  
+  const categories = [
+  "all",
+  ...Array.from(new Set(companies.map((c) => c.category).filter(Boolean)))
+]
 
-  const categories = ["all", ...Array.from(new Set(Array.isArray(companies) ? companies.map((c) => c.category) : []))]
+  //const categories = ["all", ...Array.from(new Set(Array.isArray(companies) ? companies.map((c) => c.category) : []))]
   const activeOrinactive = filteredCompanies.filter((c) => c.status === "active" || c.status === "inactive")
   const pending = filteredCompanies.filter((c) => c.status === "pending")
 
@@ -444,14 +449,17 @@ export default function CompaniesPage() {
         </Select>
         <Select value={filterCategory} onValueChange={setFilterCategory}>
           <SelectTrigger className="w-48">
+
+        
             <SelectValue placeholder="Filter by Category" />
           </SelectTrigger>
           <SelectContent>
-            {categories.map((category) => (
-              <SelectItem key={category} value={category}>
-                {category === "all" ? "All Categories" : category}
-              </SelectItem>
-            ))}
+            {categories.map((category, idx) => (
+  <SelectItem key={`${category}-${idx}`} value={category}>
+    {category === "all" ? "All Categories" : category}
+  </SelectItem>
+))}
+
           </SelectContent>
         </Select>
       </div>
