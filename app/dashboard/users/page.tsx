@@ -294,6 +294,7 @@ export default function UsersPage() {
     try {
       setManageUserLoading(true)
 
+
       const response = await fetch(`http://127.0.0.1:8000/api/company-users/${selectedUser.id}/`, {
         method: "PATCH",
         headers: {
@@ -302,10 +303,10 @@ export default function UsersPage() {
         },
         body: JSON.stringify({
           role: manageUserRole,
-          status: manageUserStatus,
+          status: manageUserStatus.toLowerCase(),
         }),
       })
-
+      
       if (!response.ok) {
         throw new Error("Failed to update user")
       }

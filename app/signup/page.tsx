@@ -294,6 +294,8 @@ export default function SignupPage() {
     companySince: "",
     plan: "",
     logo: null as File | null,
+    password: "",
+    confirmPassword: "",
   })
   const [isLoading, setIsLoading] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -319,6 +321,14 @@ export default function SignupPage() {
       return false
     }
   }
+
+  const validatePassword = (password: string) => {
+    const minLength = password.length >= 8
+    const hasUppercase = /[A-Z]/.test(password)
+    const hasDigit = /[0-9]/.test(password)
+    return minLength && hasUppercase && hasDigit
+  }
+
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -382,6 +392,17 @@ export default function SignupPage() {
     }
     if (!formData.plan) newErrors.plan = "Please select a plan"
 
+    if (!formData.password) {
+      newErrors.password = "Password is required"
+    } else if (!validatePassword(formData.password)) {
+      newErrors.password = "Password must be at least 8 characters, include an uppercase letter and a digit"
+    }
+
+    if (formData.confirmPassword !== formData.password) {
+      newErrors.confirmPassword = "Passwords do not match"
+    }
+
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       return
@@ -411,16 +432,61 @@ export default function SignupPage() {
       updated_at: null,
     }
 
-    // Simulate API call for 2 seconds
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    try {
+      const body = new FormData()
 
-    setIsLoading(false)
-    setShowSuccess(true)
+      // Append all values from signupData
+      body.append("name", formData.name)
+      body.append("email", formData.email)
+      body.append("phone", formData.phone)
+      body.append("website", formData.website || "")
+      body.append("description", formData.description)
+      body.append("address", `${formData.address}, ${formData.city}, ${formData.postalCode}, ${formData.country}`)
+      body.append("industry", formData.industry)
+      body.append("company_size", formData.companySize)
+      body.append("company_since", String(Number.parseInt(formData.companySince)))
+      body.append("plan", formData.plan)
+      body.append("password", formData.password)
+      body.append("confirm_password", formData.confirmPassword)
 
-    // Show success message for 5 seconds then redirect to login
-    setTimeout(() => {
-      router.push("/login")
-    }, 5000)
+      // Add fields not shown in form but required in signupData
+      // body.append("status", "Pending")
+      // body.append("last_login", "") // send empty string or backend can default null
+      // body.append("users", JSON.stringify([])) // empty user array
+      // body.append("monthly_usage", "0")
+      // body.append("created_at", "") // let backend assign if needed
+      // body.append("updated_at", "")
+
+      // Append file
+      if (formData.logo) {
+        body.append("logo", formData.logo)
+      }
+
+      const response = await fetch("http://127.0.0.1:8000/api/companies/", {
+        method: "POST",
+        body,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error("Backend Error:", errorData)
+        alert("Something went wrong. Please try again.")
+        setIsLoading(false)
+        return
+      }
+
+      setIsLoading(false)
+      setShowSuccess(true)
+
+      setTimeout(() => {
+        router.push("/login")
+      }, 5000)
+    } catch (err) {
+      console.error("Error submitting form:", err)
+      alert("Error submitting the form. Please try again.")
+      setIsLoading(false)
+    }
+
   }
 
   if (showSuccess) {
@@ -546,6 +612,38 @@ export default function SignupPage() {
                   className={`min-h-[100px] transition-all duration-200 ${errors.description ? "border-red-500 focus:border-red-500" : "focus:border-teal-500"}`}
                 />
                 {errors.description && <p className="text-sm text-red-500">{errors.description}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-slate-700">
+                  Password *
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter a strong password"
+                  value={formData.password}
+                  onChange={(e) => handleInputChange("password", e.target.value)}
+                  className={`h-11 transition-all duration-200 ${errors.password ? "border-red-500 focus:border-red-500" : "focus:border-teal-500"}`}
+                />
+                {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-slate-700">
+                  Confirm Password *
+                </Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Re-enter password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                  className={`h-11 transition-all duration-200 ${errors.confirmPassword ? "border-red-500 focus:border-red-500" : "focus:border-teal-500"}`}
+                />
+                {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword}</p>}
               </div>
             </div>
 
