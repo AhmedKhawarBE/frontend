@@ -224,6 +224,9 @@ export default function UsersPage() {
     })
     const responseData = await response.json()
 
+    console.log("Add user response:", responseData)
+    console.log("Generated password:", newPassword)
+
     if (!response.ok) {
       throw new Error(responseData.message || "Failed to create user")
     }
@@ -236,7 +239,7 @@ export default function UsersPage() {
     }
 
 
-    // Add to local UI state (optional if API returns the user)
+    // Add to local UI state 
     const newUser: UserData = {
       id: `user${users.length + 1}`,
       firstName: newUserData.firstName,

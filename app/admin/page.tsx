@@ -11,6 +11,7 @@ import Cookies from "js-cookie"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
+
 export default function AdminLogin() {
   const [credentials, setCredentials] = useState({ username: "", password: "" })
   const [error, setError] = useState("")
@@ -44,6 +45,13 @@ export default function AdminLogin() {
       Cookies.set("adminToken", data.token, { expires: 7 })
       const token = Cookies.get("adminToken")
       localStorage.setItem("adminAuth", "true")
+      if (data.token) {
+      localStorage.setItem("user", JSON.stringify({
+        token: data.token,
+        email: credentials.username,
+        role: "admin",
+      }))
+      }
       router.push("/admin/dashboard")
     } else {
       setError("Admin not verified or invalid type")

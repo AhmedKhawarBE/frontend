@@ -46,22 +46,32 @@ export default function LoginPage() {
         password,
       }),
     })
-
+    
     const data = await response.json()
-
+    console.log("Login response:", data)
     if (!response.ok) {
       throw new Error(data?.message || "Login failed")
     }
 
     // Check if user is verified
-    if (data.token && data.user_type === loginType) {
+    console.log(data.token, "User type:", data.last_login, "Login type:", data.user_type)
+    
+    if (data.token && data.user_type === "company_user" && !data.last_login) {
+      
+      router.push("/first-time-setup")
+     
+    }
+
+    else if (data.token && data.user_type === loginType || (data.user_type === "company_user" && loginType === "user")) {
       // Store login type in localStorage
       localStorage.setItem("loginType", loginType)
       Cookies.set("Token", data.token, { expires: 7 })
       const token = Cookies.get("Token")
 
-      // Simulate login (replace with real token logic if needed)
+      // Simulate login 
+      
       login({ email, name: data.name || "John Doe", type: loginType })
+      
 
       router.push("/dashboard")
     } else {
