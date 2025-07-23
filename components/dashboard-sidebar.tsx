@@ -20,6 +20,7 @@ import {
   UserCog,
   ChevronDown,
   ChevronRight,
+  FilePlus,
 } from "lucide-react"
 
 const navigationItems = [
@@ -77,6 +78,11 @@ const navigationItems = [
     title: "Tasks",
     href: "/dashboard/tasks",
     icon: CheckSquare,
+  },
+  {
+    title: "Upload Documents",
+    href: "/dashboard/upload-documents",
+    icon: FilePlus,
   },
   {
     title: "Content",

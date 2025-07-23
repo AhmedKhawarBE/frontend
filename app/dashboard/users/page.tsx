@@ -109,7 +109,7 @@ export default function UsersPage() {
       }
 
       const data = await response.json()
-      //console.log("Fetched users:", data)
+      console.log("Fetched users:", data)
   
 
       const mappedUsers = data.map((user: any, index: number) => ({
@@ -120,7 +120,7 @@ export default function UsersPage() {
         role: user.role,
         status: user.status || "Pending",
         companyId: user.user_company || "company123",
-        profilePic: "/placeholder.svg?height=64&width=64",
+        profilePic: user.image || "/placeholder.svg?height=64&width=64",
         lastLogin: user.user_last_login || null,
         dateCreated: user.user_date_joined || new Date().toISOString(),
       }))
@@ -223,9 +223,6 @@ export default function UsersPage() {
       }),
     })
     const responseData = await response.json()
-
-    console.log("Add user response:", responseData)
-    console.log("Generated password:", newPassword)
 
     if (!response.ok) {
       throw new Error(responseData.message || "Failed to create user")

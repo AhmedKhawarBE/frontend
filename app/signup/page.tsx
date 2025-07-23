@@ -1,7 +1,6 @@
 "use client"
 
-import type React from "react"
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -278,6 +277,8 @@ const plans = [
   { value: "custom", label: "Custom Plan - Contact us", description: "Tailored to your needs" },
 ]
 
+
+
 export default function SignupPage() {
   const [formData, setFormData] = useState({
     name: "",
@@ -300,8 +301,17 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter()
   const { login } = useAuth()
+
+  useEffect(() => {
+  if (errorMessage) {
+    const timer = setTimeout(() => setErrorMessage(null), 5000); // 5 seconds
+    return () => clearTimeout(timer);
+  }
+}, [errorMessage]);
+
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -461,6 +471,7 @@ export default function SignupPage() {
       if (formData.logo) {
         body.append("logo", formData.logo)
       }
+      console.log(body.get("logo"), "Logo file")
 
       const response = await fetch("http://127.0.0.1:8000/api/companies/", {
         method: "POST",
@@ -468,11 +479,17 @@ export default function SignupPage() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        console.error("Backend Error:", errorData)
-        alert("Something went wrong. Please try again.")
-        setIsLoading(false)
-        return
+        const errorData = await response.json();
+
+        // Convert errorData to string (handle objects like { email: ["This field is required."] })
+        const formattedError = Object.entries(errorData)
+          .map(([key, val]) => `${key}: ${(val as string[]).join(', ')}`)
+          .join('\n');
+
+        setErrorMessage(formattedError);
+        setIsLoading(false);
+        return;
+
       }
 
       setIsLoading(false)
@@ -853,6 +870,13 @@ export default function SignupPage() {
               )}
             </Button>
           </form>
+
+          {errorMessage && (
+            <div className="mt-4 p-2 text-sm text-red-600 bg-red-100 rounded">
+              {errorMessage}
+            </div>
+          )}
+
 
           <div className="mt-6 text-center">
             <p className="text-sm text-slate-600">

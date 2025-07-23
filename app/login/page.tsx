@@ -56,8 +56,9 @@ export default function LoginPage() {
     // Check if user is verified
     console.log(data.token, "User type:", data.last_login, "Login type:", data.user_type)
     
-    if (data.token && data.user_type === "company_user" && !data.last_login) {
-      
+    if (data.token && data.user_type === "company_user" && !data.previous_last_login) {
+      localStorage.setItem("user", JSON.stringify(data))
+      Cookies.set("Token", data.token, { expires: 7 })
       router.push("/first-time-setup")
      
     }
@@ -69,7 +70,6 @@ export default function LoginPage() {
       const token = Cookies.get("Token")
 
       // Simulate login 
-      
       login({ email, name: data.name || "John Doe", type: loginType })
       
 

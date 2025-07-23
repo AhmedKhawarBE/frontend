@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { toast } from "@/hooks/use-toast"
 import { Eye, EyeOff, Upload, User, Lock, Camera } from "lucide-react"
+import Cookies from "js-cookie"
 
 export default function FirstTimeSetupPage() {
   const router = useRouter()
@@ -38,9 +39,10 @@ export default function FirstTimeSetupPage() {
       router.push("/login")
       return
     }
+    console.log(user)
 
     const userData = JSON.parse(user)
-    if (userData.lastLogin === null) {
+    if (userData.previous_last_login !== null) {
       // User has logged in before, redirect to dashboard
       router.push("/dashboard")
     }
@@ -90,16 +92,28 @@ export default function FirstTimeSetupPage() {
     setIsLoading(true)
 
     try {
-      // Simulate API call to update password
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      toast({
-        title: "Password Updated",
-        description: "Your password has been successfully updated",
+      
+       const user = localStorage.getItem("user")
+       const userData = user ? JSON.parse(user) : null
+       const response = await fetch(`http://127.0.0.1:8000/api/company-users/me/`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Token ${Cookies.get("Token") || ""}`,
+        },
+        body: JSON.stringify({
+          password: passwords.newPassword,
+          confirm_password: passwords.confirmPassword,
+        }),
       })
-
-      // Move to next step
-      setCurrentStep(2)
+      console.log("Password update response:", response)
+      if (response.ok) {
+        setCurrentStep(2)
+      } else {
+        const errorData = await response.json()
+        console.error("Password update failed:", errorData)
+        alert("Failed to update password. Please try again.")
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -145,28 +159,37 @@ export default function FirstTimeSetupPage() {
   }
 
   const handleImageSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  e.preventDefault()
 
-    if (!selectedImage) {
-      toast({
-        title: "No image selected",
-        description: "Please select a profile picture",
-        variant: "destructive",
-      })
-      return
-    }
+  if (!selectedImage) {
+    toast({
+      title: "No image selected",
+      description: "Please select a profile picture",
+      variant: "destructive",
+    })
+    return
+  }
 
-    setIsLoading(true)
+  setIsLoading(true)
 
-    try {
-      // Simulate API call to upload image and complete setup
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+  try {
+    const formData = new FormData()
+    formData.append("image", selectedImage)
 
-      // Update user data in localStorage
-      const user = JSON.parse(localStorage.getItem("user") || "{}")
+    const response = await fetch("http://127.0.0.1:8000/api/company-users/me/", {
+      method: "PATCH",
+      headers: {
+        Authorization: `Token ${Cookies.get("Token") || ""}`,
+        // No need to set Content-Type — browser will set it automatically for FormData
+      },
+      body: formData,
+    })
+
+    const data = await response.json()
+    if (response.ok) {
       const updatedUser = {
-        ...user,
-        profilePic: imagePreview, // In real app, this would be the uploaded image URL
+        ...JSON.parse(localStorage.getItem("user") || "{}"),
+        profilePic: data.profile_picture || imagePreview, // updated image URL from backend
         lastLogin: new Date().toISOString(),
         status: "Active",
       }
@@ -177,20 +200,28 @@ export default function FirstTimeSetupPage() {
         description: "Welcome to Smart Convo! Redirecting to your dashboard...",
       })
 
-      // Redirect to dashboard after a short delay
       setTimeout(() => {
         router.push("/dashboard")
       }, 1500)
-    } catch (error) {
+    } else {
+      console.error("Image upload error:", data)
       toast({
-        title: "Error",
-        description: "Failed to upload image. Please try again.",
+        title: "Upload Failed",
+        description: "Something went wrong while uploading the image.",
         variant: "destructive",
       })
-    } finally {
-      setIsLoading(false)
     }
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Failed to upload image. Please try again.",
+      variant: "destructive",
+    })
+  } finally {
+    setIsLoading(false)
   }
+}
+
 
   const skipImageUpload = () => {
     // Complete setup without image
