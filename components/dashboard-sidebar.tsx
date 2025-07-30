@@ -21,6 +21,7 @@ import {
   ChevronDown,
   ChevronRight,
   FilePlus,
+  ShieldCheck,
 } from "lucide-react"
 
 const navigationItems = [
@@ -79,11 +80,11 @@ const navigationItems = [
     href: "/dashboard/tasks",
     icon: CheckSquare,
   },
-  {
-    title: "Upload Documents",
-    href: "/dashboard/upload-documents",
-    icon: FilePlus,
-  },
+  // {
+  //   title: "Upload Documents",
+  //   href: "/dashboard/upload-documents",
+  //   icon: FilePlus,
+  // },
   {
     title: "Content",
     href: "/dashboard/content",
@@ -104,6 +105,11 @@ const navigationItems = [
         title: "User Module",
         href: "/account-settings/user-module",
         icon: UserCog,
+      },
+      {
+        title: "Personal Settings",
+        href: "dashboard//account-settings/personal-settings",
+        icon: ShieldCheck,
       },
     ],
   },

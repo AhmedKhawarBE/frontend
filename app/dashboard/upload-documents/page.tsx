@@ -412,6 +412,8 @@ export default function UploadDocumentsPage() {
         setTimeout(() => setErrorMessage(""), 5000);
         throw new Error("S3 Upload failed.")
       }
+        
+      const s3Key = presignedData.file_key // ← Correct
 
       const response = await fetch("http://127.0.0.1:8000/api/documents/documents/", {
         method: "POST",
@@ -422,7 +424,8 @@ export default function UploadDocumentsPage() {
         body: JSON.stringify({
           title: file.name,
           description: "Uploaded from web app",
-          s3_url: uploadUrl.split("?")[0]
+          s3_url: uploadUrl.split("?")[0],
+          file_key: s3Key 
         })
       })
 
@@ -575,3 +578,33 @@ export default function UploadDocumentsPage() {
     </div>
   )
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
