@@ -969,7 +969,7 @@ function AgentSelection({ onSelectAgent }: { onSelectAgent: (agent: any) => void
 
   const fetchAgents = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/agents/agents/", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Token ${Cookies.get("Token") || ""}`,
@@ -1321,7 +1321,7 @@ function FAQTab({ agentId }: { agentId: string }) {
 
   const fetchDocuments = async () => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/documents/documents/?agent_id=${agentId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/documents/documents/?agent_id=${agentId}`, {
         headers: { Authorization: `Token ${token}` }
       })
       const data = await res.json()
@@ -1343,7 +1343,7 @@ function FAQTab({ agentId }: { agentId: string }) {
 
     setUploading(true)
     try {
-      const presignedRes = await fetch("http://127.0.0.1:8000/api/documents/s3/presigned-url/", {
+      const presignedRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/documents/s3/presigned-url/`, {
         method: "POST",
         headers: {
           Authorization: `Token ${token}`,
@@ -1367,7 +1367,7 @@ function FAQTab({ agentId }: { agentId: string }) {
 
       if (!s3Res.ok) throw new Error("S3 upload failed")
 
-      const response = await fetch("http://127.0.0.1:8000/api/documents/documents/", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/documents/documents/`, {
         method: "POST",
         headers: {
           Authorization: `Token ${token}`,
@@ -1449,7 +1449,7 @@ function FAQTab({ agentId }: { agentId: string }) {
                   <button
                     onClick={async () => {
                       try {
-                        const res = await fetch(`http://127.0.0.1:8000/api/documents/presigned-view-url/?file_key=${encodeURIComponent(doc.title)}`, {
+                        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/documents/presigned-view-url/?file_key=${encodeURIComponent(doc.title)}`, {
                           headers: { Authorization: `Token ${token}` }
                         })
                         const data = await res.json()

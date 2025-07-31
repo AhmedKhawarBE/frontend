@@ -39,7 +39,7 @@ export default function ResetPasswordForm() {
     setLoading(true)
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/authentication/reset-password/complete/", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/authentication/reset-password/complete/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

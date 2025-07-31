@@ -473,7 +473,7 @@ export default function SignupPage() {
       }
       console.log(body.get("logo"), "Logo file")
 
-      const response = await fetch("http://127.0.0.1:8000/api/companies/", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/companies/`, {
         method: "POST",
         body,
       })

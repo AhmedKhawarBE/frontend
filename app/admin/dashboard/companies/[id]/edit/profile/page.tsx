@@ -35,7 +35,7 @@ export default function EditCompanyProfile() {
     const fetchCompany = async () => {
       const token = Cookies.get("adminToken")
       try {
-        const res = await fetch(`http://127.0.0.1:8000/api/companies/${companyId}/`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/companies/${companyId}/`, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Token ${token || ""}`
@@ -61,7 +61,7 @@ export default function EditCompanyProfile() {
   const handleSave = async () => {
     const token = Cookies.get("adminToken")
     try {
-      await fetch(`http://127.0.0.1:8000/api/companies/${companyId}/`, {
+      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/companies/${companyId}/`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -81,7 +81,7 @@ export default function EditCompanyProfile() {
 
     const token = Cookies.get("adminToken")
     try {
-      await fetch(`http://127.0.0.1:8000/api/companies/${companyId}/`, {
+      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/companies/${companyId}/`, {
         method: "DELETE",
         headers: {
           Authorization: `Token ${token || ""}`

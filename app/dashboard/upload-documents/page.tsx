@@ -19,7 +19,7 @@
 
 //     try {
 //       // Get presigned S3 URL from backend
-//       const presignedRes = await fetch("http://127.0.0.1:8000/api/documents/s3/presigned-url/", {
+//       const presignedRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/documents/s3/presigned-url/`, {
 //         method: "POST",
 //         headers: {
 //           Authorization: `Token ${token}`,
@@ -58,7 +58,7 @@
 //         }
 
 //       // Step 3: Notify backend about the uploaded document
-//       await fetch("http://127.0.0.1:8000/api/documents/documents/", {
+//       await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/documents/documents/`, {
 //         method: "POST",
 //         headers: {
 //           Authorization: `Token ${token}`,
@@ -83,7 +83,7 @@
 
 //   const fetchDocuments = async () => {
 //     try {
-//       const res = await fetch("http://127.0.0.1:8000/api/documents/documents/", {
+//       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/documents/documents/`, {
 //         headers: {
 //           Authorization: `Token ${token}`
 //         }
@@ -165,7 +165,7 @@
 //     setUploading(true)
 
 //     try {
-//       const presignedRes = await fetch("http://127.0.0.1:8000/api/documents/s3/presigned-url/", {
+//       const presignedRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/documents/s3/presigned-url/`, {
 //         method: "POST",
 //         headers: {
 //           Authorization: `Token ${token}`,
@@ -196,7 +196,7 @@
 //         throw new Error("S3 Upload failed.")
 //       }
 
-//       const response = await fetch("http://127.0.0.1:8000/api/documents/documents/", {
+//       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/documents/documents/`, {
 //         method: "POST",
 //         headers: {
 //           Authorization: `Token ${token}`,
@@ -226,7 +226,7 @@
 
 //   const fetchDocuments = async () => {
 //     try {
-//       const res = await fetch("http://127.0.0.1:8000/api/documents/documents/", {
+//       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/documents/documents/`, {
 //         headers: {
 //           Authorization: `Token ${token}`
 //         }
@@ -310,7 +310,7 @@
 //                     onClick={async () => {
 //                       try {
 //                         const res = await fetch(
-//                           `http://127.0.0.1:8000/api/documents/presigned-view-url/?file_key=${encodeURIComponent(doc.s3_key)}`,
+//                           `${process.env.NEXT_PUBLIC_BASE_URL}/documents/presigned-view-url/?file_key=${encodeURIComponent(doc.s3_key)}`,
 //                           {
 //                             headers: {
 //                               Authorization: `Token ${token}`,
@@ -375,7 +375,7 @@ export default function UploadDocumentsPage() {
     setUploading(true)
 
     try {
-      const presignedRes = await fetch("http://127.0.0.1:8000/api/documents/s3/presigned-url/", {
+      const presignedRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/documents/s3/presigned-url/`, {
         method: "POST",
         headers: {
           Authorization: `Token ${token}`,
@@ -415,7 +415,7 @@ export default function UploadDocumentsPage() {
         
       const s3Key = presignedData.file_key // ← Correct
 
-      const response = await fetch("http://127.0.0.1:8000/api/documents/documents/", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/documents/documents/`, {
         method: "POST",
         headers: {
           Authorization: `Token ${token}`,
@@ -450,7 +450,7 @@ export default function UploadDocumentsPage() {
 
   const fetchDocuments = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/documents/documents/", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/documents/documents/`, {
         headers: {
           Authorization: `Token ${token}`
         }
@@ -527,7 +527,7 @@ export default function UploadDocumentsPage() {
   ) : (
     <ul className="space-y-3">
       {docs.map((doc: any) => {
-        const presignedUrl = `http://127.0.0.1:8000/api/documents/presigned-view-url/?file_key=${encodeURIComponent(doc.title)}`
+        const presignedUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/documents/presigned-view-url/?file_key=${encodeURIComponent(doc.title)}`
 
         return (
           <li
@@ -538,7 +538,7 @@ export default function UploadDocumentsPage() {
                 onClick={async () => {
                     try {
                     const res = await fetch(
-                        `http://127.0.0.1:8000/api/documents/presigned-view-url/?file_key=${encodeURIComponent(doc.title)}`,
+                        `${process.env.NEXT_PUBLIC_BASE_URL}/documents/presigned-view-url/?file_key=${encodeURIComponent(doc.title)}`,
                         {
                         headers: {
                             Authorization: `Token ${token}`,

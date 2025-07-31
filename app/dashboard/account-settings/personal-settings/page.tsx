@@ -30,7 +30,7 @@ export default function PersonalSettings() {
   useEffect(() => {
     const fetch2FAStatus = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/authentication/2fa/status/", {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/authentication/2fa/status/`, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Token ${token}`,
@@ -58,7 +58,7 @@ export default function PersonalSettings() {
       // Enabling 2FA
       setLoading(true)
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/authentication/2fa/setup/", {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/authentication/2fa/setup/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -83,7 +83,7 @@ export default function PersonalSettings() {
     } else {
       // Disabling 2FA
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/authentication/2fa/disable/", {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/authentication/2fa/disable/`, {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
@@ -118,7 +118,7 @@ export default function PersonalSettings() {
     setVerifying(true)
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/authentication/2fa/verify/", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/authentication/2fa/verify/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

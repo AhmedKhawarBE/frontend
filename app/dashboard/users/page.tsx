@@ -96,7 +96,7 @@ export default function UsersPage() {
   useEffect(() => {
   const fetchUsers = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/company-users/", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company-users/`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -208,7 +208,7 @@ export default function UsersPage() {
   setGeneratedPassword(newPassword)
 
   try {
-    const response = await fetch("http://127.0.0.1:8000/api/company-users/", {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company-users/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -295,7 +295,7 @@ export default function UsersPage() {
       setManageUserLoading(true)
 
 
-      const response = await fetch(`http://127.0.0.1:8000/api/company-users/${selectedUser.id}/`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company-users/${selectedUser.id}/`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -347,7 +347,7 @@ export default function UsersPage() {
     try {
       setManageUserLoading(true)
 
-      const response = await fetch(`http://127.0.0.1:8000/api/company-users/${selectedUser.id}/`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company-users/${selectedUser.id}/`, {
         method: "DELETE",
         headers: {
         "Content-Type": "application/json",

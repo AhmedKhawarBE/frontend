@@ -27,7 +27,7 @@
 //   const { toast } = useToast()
 
 //   useEffect(() => {
-//     fetch("http://127.0.0.1:8000/api/agents/agents/", {
+//     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/`, {
 //       headers: {
 //         "Content-Type": "application/json",
 //         Authorization: `Token ${Cookies.get("Token") || ""}`,
@@ -65,7 +65,7 @@
 //     setAgents((prev) => prev.map((agent) => (agent.id === id ? { ...agent, status: newStatus } : agent)))
 
 //     try {
-//       const res = await fetch(`http://127.0.0.1:8000/api/agents/agents/${id}/`, {
+//       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${id}/`, {
 //         method: "PATCH",
 //         headers: {
 //           "Content-Type": "application/json",
@@ -97,7 +97,7 @@
 //     if (!window.confirm("Are you sure you want to delete this agent?")) return
 
 //     try {
-//       const res = await fetch(`http://127.0.0.1:8000/api/agents/agents/${id}/`, {
+//       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${id}/`, {
 //         method: "DELETE",
 //         headers: {
 //           "Content-Type": "application/json",
@@ -400,7 +400,7 @@ export default function AgentsPage() {
   const { toast } = useToast()
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/agents/agents/", {
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/`, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Token ${Cookies.get("Token") || ""}`,
@@ -448,7 +448,7 @@ export default function AgentsPage() {
     setAgents((prev) => prev.map((agent) => (agent.id === id ? { ...agent, status: newStatus } : agent)))
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/agents/agents/${id}/`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${id}/`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -480,7 +480,7 @@ export default function AgentsPage() {
     if (!window.confirm("Are you sure you want to delete this agent?")) return
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/agents/agents/${id}/`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${id}/`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -512,7 +512,7 @@ export default function AgentsPage() {
   if (!selectedAgentId) return
 
   try {
-    const res = await fetch(`http://127.0.0.1:8000/api/agents/agents/${selectedAgentId}/`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${selectedAgentId}/`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -867,7 +867,7 @@ export default function AgentsPage() {
 //   const { toast } = useToast()
 
 //   useEffect(() => {
-//     fetch("http://127.0.0.1:8000/api/agents/agents/", {
+//     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/`, {
 //       headers: {
 //         "Content-Type": "application/json",
 //         Authorization: `Token ${Cookies.get("Token") || ""}`,
@@ -905,7 +905,7 @@ export default function AgentsPage() {
 //     setAgents((prev) => prev.map((agent) => (agent.id === id ? { ...agent, status: newStatus } : agent)))
 
 //     try {
-//       const res = await fetch(`http://127.0.0.1:8000/api/agents/agents/${id}/`, {
+//       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${id}/`, {
 //         method: "PATCH",
 //         headers: {
 //           "Content-Type": "application/json",
@@ -937,7 +937,7 @@ export default function AgentsPage() {
 //     if (!window.confirm("Are you sure you want to delete this agent?")) return
 
 //     try {
-//       const res = await fetch(`http://127.0.0.1:8000/api/agents/agents/${id}/`, {
+//       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${id}/`, {
 //         method: "DELETE",
 //         headers: {
 //           "Content-Type": "application/json",
@@ -969,7 +969,7 @@ export default function AgentsPage() {
 //     if (!selectedAgentId) return
 
 //     try {
-//       const res = await fetch(`http://127.0.0.1:8000/api/agents/agents/${selectedAgentId}/`, {
+//       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${selectedAgentId}/`, {
 //         method: "PATCH",
 //         headers: {
 //           "Content-Type": "application/json",

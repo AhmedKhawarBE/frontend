@@ -21,7 +21,7 @@ export default function CompaniesPage() {
     const fetchCompanies = async () => {
       const token = Cookies.get("adminToken")
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/companies/", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/companies/`, {
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Token ${token || ""}`
@@ -52,7 +52,7 @@ export default function CompaniesPage() {
   const handleApproveCompany = async (companyId: number) => {
     const token = Cookies.get("adminToken")
     try {
-      await fetch(`http://127.0.0.1:8000/api/companies/${companyId}/`, {
+      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/companies/${companyId}/`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -71,7 +71,7 @@ export default function CompaniesPage() {
   const handleRejectCompany = async (companyId: number) => {
     const token = Cookies.get("adminToken")
     try {
-      await fetch(`http://127.0.0.1:8000/api/companies/${companyId}/`, {
+      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/companies/${companyId}/`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

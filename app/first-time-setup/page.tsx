@@ -95,7 +95,7 @@ export default function FirstTimeSetupPage() {
       
        const user = localStorage.getItem("user")
        const userData = user ? JSON.parse(user) : null
-       const response = await fetch(`http://127.0.0.1:8000/api/company-users/me/`, {
+       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company-users/me/`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -176,7 +176,7 @@ export default function FirstTimeSetupPage() {
     const formData = new FormData()
     formData.append("image", selectedImage)
 
-    const response = await fetch("http://127.0.0.1:8000/api/company-users/me/", {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company-users/me/`, {
       method: "PATCH",
       headers: {
         Authorization: `Token ${Cookies.get("Token") || ""}`,
