@@ -53,23 +53,23 @@ const navigationItems = [
     icon: UserCog,
     companyOnly: true,
   },
-  {
-    title: "System Setting",
-    icon: Cog,
-    companyOnly: true,
-    children: [
-      {
-        title: "Company",
-        href: "/system-settings/company",
-        icon: Building,
-      },
-      {
-        title: "Branch",
-        href: "/system-settings/branch",
-        icon: GitBranch,
-      },
-    ],
-  },
+  // {
+  //   title: "System Setting",
+  //   icon: Cog,
+  //   companyOnly: true,
+  //   children: [
+  //     {
+  //       title: "Company",
+  //       href: "/system-settings/company",
+  //       icon: Building,
+  //     },
+  //     {
+  //       title: "Branch",
+  //       href: "/system-settings/branch",
+  //       icon: GitBranch,
+  //     },
+  //   ],
+  // },
   {
     title: "Integrations",
     href: "/dashboard/integrations",

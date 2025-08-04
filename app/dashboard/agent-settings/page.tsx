@@ -1475,7 +1475,7 @@ function FAQTab({ agentId }: { agentId: string }) {
 
 
 // Voiceprint Tab (keeping existing)
-function VoiceprintTab() {
+function VoiceprintTab({ agentId }: { agentId: string }) {
   return (
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -1554,12 +1554,112 @@ function VoiceprintTab() {
 }
 
 // Voice Prompts Tab (keeping existing)
-function VoicePromptsTab() {
+function VoicePromptsTab({ agentId }: { agentId: string }) {
   const [expandedSections, setExpandedSections] = useState<string[]>(["welcome", "processing"])
+  const { toast } = useToast()
 
+  const [welcomePhrase, setWelcomePhrase] = useState("This is a virtual agent.")
+  const [processingPhrases, setProcessingPhrases] = useState(`Okay, give me just a minute.
+Great, just one second.
+Hold on a moment.`)
+  const [voicemailPhrase, setVoicemailPhrase] = useState("Okay, please start your voicemail, and hangup when you're done.")
+  const [silencePhrase, setSilencePhrase] = useState("Are you still there? Maybe I missed what you said.")
+  const DEFAULTS = {
+  welcome: "This is a virtual agent.",
+  processing: `Okay, give me just a minute.\nGreat, just one second.\nHold on a moment.`,
+  voicemail: "Okay, please start your voicemail, and hangup when you're done.",
+  silence: "Are you still there? Maybe I missed what you said.",
+}
   const toggleSection = (section: string) => {
-    setExpandedSections((prev) => (prev.includes(section) ? prev.filter((s) => s !== section) : [...prev, section]))
+    setExpandedSections((prev) =>
+      prev.includes(section) ? prev.filter((s) => s !== section) : [...prev, section]
+    )
   }
+
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`, {
+          headers: {
+            Authorization: `Token ${Cookies.get("Token") || ""}`,
+          },
+        })
+
+        if (!res.ok) throw new Error("Failed to fetch voice prompts")
+
+        const data = await res.json()
+
+        if (data.welcome_phrase) setWelcomePhrase(data.welcome_phrase)
+        if (Array.isArray(data.processing_phrases)) setProcessingPhrases(data.processing_phrases.join("\n"))
+        if (data.voicemail_phrase) setVoicemailPhrase(data.voicemail_phrase)
+        if (data.silence_phrase) setSilencePhrase(data.silence_phrase)
+
+      } catch (err: any) {
+        toast({ title: "Error", description: err.message || "Failed to load voice prompts." })
+      }
+    }
+
+    if (agentId) fetchPrompts()
+  }, [agentId])
+
+
+  const handleSave = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Token ${Cookies.get("Token") || ""}`,
+        },
+        body: JSON.stringify({
+          welcome_phrase: welcomePhrase,
+          processing_phrases: processingPhrases.split("\n").filter(p => p.trim() !== ""), // assuming backend expects an array
+          voicemail_phrase: voicemailPhrase,
+          silence_phrase: silencePhrase,
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error("Failed to update voice prompts")
+      }
+
+      toast({ title: "Success", description: "Voice prompts updated successfully." })
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message })
+    }
+  }
+
+  const handleReset = async () => {
+  setWelcomePhrase(DEFAULTS.welcome)
+  setProcessingPhrases(DEFAULTS.processing)
+  setVoicemailPhrase(DEFAULTS.voicemail)
+  setSilencePhrase(DEFAULTS.silence)
+
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Token ${Cookies.get("Token") || ""}`,
+      },
+      body: JSON.stringify({
+        welcome_phrase: DEFAULTS.welcome,
+        processing_phrases: DEFAULTS.processing.split("\n"),
+        voicemail_phrase: DEFAULTS.voicemail,
+        silence_phrase: DEFAULTS.silence,
+      }),
+    })
+
+    if (!res.ok) {
+      throw new Error("Failed to reset to default")
+    }
+
+    toast({ title: "Success", description: "Voice prompts reset to default." })
+  } catch (err: any) {
+    toast({ title: "Error", description: err.message })
+  }
+}
+
 
   return (
     <div className="space-y-6">
@@ -1581,21 +1681,19 @@ function VoicePromptsTab() {
               <p className="text-sm text-slate-600">The greeting your agent uses when it answers a call.</p>
             </div>
             <div className="flex items-center space-x-2">
-              <Button size="icon" variant="outline">
-                <Play className="w-4 h-4" />
-              </Button>
-              <Button size="icon" variant="outline">
-                <Square className="w-4 h-4" />
-              </Button>
+              <Button size="icon" variant="outline"><Play className="w-4 h-4" /></Button>
+              <Button size="icon" variant="outline"><Square className="w-4 h-4" /></Button>
               <Button size="icon" variant="outline" onClick={() => toggleSection("welcome")}>
-                <ChevronUp
-                  className={`w-4 h-4 transition-transform ${expandedSections.includes("welcome") ? "rotate-180" : ""}`}
-                />
+                <ChevronUp className={`w-4 h-4 transition-transform ${expandedSections.includes("welcome") ? "rotate-180" : ""}`} />
               </Button>
             </div>
           </div>
           <div className="p-4">
-            <Textarea defaultValue="This is a virtual agent." className="min-h-[100px]" />
+            <Textarea
+              value={welcomePhrase}
+              onChange={(e) => setWelcomePhrase(e.target.value)}
+              className="min-h-[100px]"
+            />
           </div>
         </div>
 
@@ -1610,27 +1708,20 @@ function VoicePromptsTab() {
               </p>
             </div>
             <div className="flex items-center space-x-2">
-              <Button size="icon" variant="outline">
-                <Play className="w-4 h-4" />
-              </Button>
-              <Button size="icon" variant="outline">
-                <Square className="w-4 h-4" />
-              </Button>
+              <Button size="icon" variant="outline"><Play className="w-4 h-4" /></Button>
+              <Button size="icon" variant="outline"><Square className="w-4 h-4" /></Button>
               <Button size="icon" variant="outline" onClick={() => toggleSection("processing")}>
-                <ChevronUp
-                  className={`w-4 h-4 transition-transform ${expandedSections.includes("processing") ? "rotate-180" : ""}`}
-                />
+                <ChevronUp className={`w-4 h-4 transition-transform ${expandedSections.includes("processing") ? "rotate-180" : ""}`} />
               </Button>
             </div>
           </div>
           <div className="p-4 space-y-4">
             <Textarea
-              defaultValue={`Okay, give me just a minute.
-Great, just one second.
-Hold on a moment.`}
+              value={processingPhrases}
+              onChange={(e) => setProcessingPhrases(e.target.value)}
               className="min-h-[120px]"
             />
-            <Button variant="outline">Reset to default</Button>
+            <Button variant="outline" onClick={handleReset}>Reset to default</Button>
           </div>
         </div>
 
@@ -1644,22 +1735,17 @@ Hold on a moment.`}
               </p>
             </div>
             <div className="flex items-center space-x-2">
-              <Button size="icon" variant="outline">
-                <Play className="w-4 h-4" />
-              </Button>
-              <Button size="icon" variant="outline">
-                <Square className="w-4 h-4" />
-              </Button>
+              <Button size="icon" variant="outline"><Play className="w-4 h-4" /></Button>
+              <Button size="icon" variant="outline"><Square className="w-4 h-4" /></Button>
               <Button size="icon" variant="outline" onClick={() => toggleSection("voicemail")}>
-                <ChevronUp
-                  className={`w-4 h-4 transition-transform ${expandedSections.includes("voicemail") ? "rotate-180" : ""}`}
-                />
+                <ChevronUp className={`w-4 h-4 transition-transform ${expandedSections.includes("voicemail") ? "rotate-180" : ""}`} />
               </Button>
             </div>
           </div>
           <div className="p-4">
             <Textarea
-              defaultValue="Okay, please start your voicemail, and hangup when you're done."
+              value={voicemailPhrase}
+              onChange={(e) => setVoicemailPhrase(e.target.value)}
               className="min-h-[100px]"
             />
           </div>
@@ -1673,43 +1759,224 @@ Hold on a moment.`}
               <p className="text-sm text-slate-600">The agent will say this after 15 seconds of silence.</p>
             </div>
             <div className="flex items-center space-x-2">
-              <Button size="icon" variant="outline">
-                <Play className="w-4 h-4" />
-              </Button>
-              <Button size="icon" variant="outline">
-                <Square className="w-4 h-4" />
-              </Button>
+              <Button size="icon" variant="outline"><Play className="w-4 h-4" /></Button>
+              <Button size="icon" variant="outline"><Square className="w-4 h-4" /></Button>
               <Button size="icon" variant="outline" onClick={() => toggleSection("silence")}>
-                <ChevronUp
-                  className={`w-4 h-4 transition-transform ${expandedSections.includes("silence") ? "rotate-180" : ""}`}
-                />
+                <ChevronUp className={`w-4 h-4 transition-transform ${expandedSections.includes("silence") ? "rotate-180" : ""}`} />
               </Button>
             </div>
           </div>
           <div className="p-4">
-            <Textarea defaultValue="Are you still there? Maybe I missed what you said." className="min-h-[100px]" />
+            <Textarea
+              value={silencePhrase}
+              onChange={(e) => setSilencePhrase(e.target.value)}
+              className="min-h-[100px]"
+            />
           </div>
         </div>
 
         <div className="flex justify-between">
-          <Button variant="outline">Reset to default</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white">Save</Button>
+          <Button variant="outline" onClick={handleReset}>Reset to default</Button>
+
+          <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={handleSave}>Save</Button>
         </div>
       </div>
     </div>
   )
 }
 
+// function VoicePromptsTab() {
+//   const [expandedSections, setExpandedSections] = useState<string[]>(["welcome", "processing"])
+
+//   const toggleSection = (section: string) => {
+//     setExpandedSections((prev) => (prev.includes(section) ? prev.filter((s) => s !== section) : [...prev, section]))
+//   }
+
+//   return (
+//     <div className="space-y-6">
+//       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+//         <p className="text-blue-800">
+//           When your agent interacts with a caller, we have some standard phrases that we utilize throughout the
+//           conversation. You can change these here.
+//         </p>
+//       </div>
+
+//       <div className="space-y-4">
+//         <h2 className="text-xl font-medium text-slate-800">Manage Voice Phrases</h2>
+
+//         {/* Welcome Phrase */}
+//         <div className="bg-white border border-slate-200 rounded-lg">
+//           <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+//             <div>
+//               <h3 className="font-medium text-slate-800">Welcome Phrase</h3>
+//               <p className="text-sm text-slate-600">The greeting your agent uses when it answers a call.</p>
+//             </div>
+//             <div className="flex items-center space-x-2">
+//               <Button size="icon" variant="outline">
+//                 <Play className="w-4 h-4" />
+//               </Button>
+//               <Button size="icon" variant="outline">
+//                 <Square className="w-4 h-4" />
+//               </Button>
+//               <Button size="icon" variant="outline" onClick={() => toggleSection("welcome")}>
+//                 <ChevronUp
+//                   className={`w-4 h-4 transition-transform ${expandedSections.includes("welcome") ? "rotate-180" : ""}`}
+//                 />
+//               </Button>
+//             </div>
+//           </div>
+//           <div className="p-4">
+//             <Textarea defaultValue="This is a virtual agent." className="min-h-[100px]" />
+//           </div>
+//         </div>
+
+//         {/* Processing Phrases */}
+//         <div className="bg-white border border-slate-200 rounded-lg">
+//           <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+//             <div>
+//               <h3 className="font-medium text-slate-800">Processing Phrases</h3>
+//               <p className="text-sm text-slate-600">
+//                 What the agent says when it's processing something the caller has said. It will choose one at random
+//                 from the list.
+//               </p>
+//             </div>
+//             <div className="flex items-center space-x-2">
+//               <Button size="icon" variant="outline">
+//                 <Play className="w-4 h-4" />
+//               </Button>
+//               <Button size="icon" variant="outline">
+//                 <Square className="w-4 h-4" />
+//               </Button>
+//               <Button size="icon" variant="outline" onClick={() => toggleSection("processing")}>
+//                 <ChevronUp
+//                   className={`w-4 h-4 transition-transform ${expandedSections.includes("processing") ? "rotate-180" : ""}`}
+//                 />
+//               </Button>
+//             </div>
+//           </div>
+//           <div className="p-4 space-y-4">
+//             <Textarea
+//               defaultValue={`Okay, give me just a minute.
+// Great, just one second.
+// Hold on a moment.`}
+//               className="min-h-[120px]"
+//             />
+//             <Button variant="outline">Reset to default</Button>
+//           </div>
+//         </div>
+
+//         {/* Voicemail Phrase */}
+//         <div className="bg-white border border-slate-200 rounded-lg">
+//           <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+//             <div>
+//               <h3 className="font-medium text-slate-800">Voicemail Phrase</h3>
+//               <p className="text-sm text-slate-600">
+//                 The agent will say this after the caller has asked to leave a voicemail.
+//               </p>
+//             </div>
+//             <div className="flex items-center space-x-2">
+//               <Button size="icon" variant="outline">
+//                 <Play className="w-4 h-4" />
+//               </Button>
+//               <Button size="icon" variant="outline">
+//                 <Square className="w-4 h-4" />
+//               </Button>
+//               <Button size="icon" variant="outline" onClick={() => toggleSection("voicemail")}>
+//                 <ChevronUp
+//                   className={`w-4 h-4 transition-transform ${expandedSections.includes("voicemail") ? "rotate-180" : ""}`}
+//                 />
+//               </Button>
+//             </div>
+//           </div>
+//           <div className="p-4">
+//             <Textarea
+//               defaultValue="Okay, please start your voicemail, and hangup when you're done."
+//               className="min-h-[100px]"
+//             />
+//           </div>
+//         </div>
+
+//         {/* Extended Silence Phrase */}
+//         <div className="bg-white border border-slate-200 rounded-lg">
+//           <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+//             <div>
+//               <h3 className="font-medium text-slate-800">Extended Silence Phrase</h3>
+//               <p className="text-sm text-slate-600">The agent will say this after 15 seconds of silence.</p>
+//             </div>
+//             <div className="flex items-center space-x-2">
+//               <Button size="icon" variant="outline">
+//                 <Play className="w-4 h-4" />
+//               </Button>
+//               <Button size="icon" variant="outline">
+//                 <Square className="w-4 h-4" />
+//               </Button>
+//               <Button size="icon" variant="outline" onClick={() => toggleSection("silence")}>
+//                 <ChevronUp
+//                   className={`w-4 h-4 transition-transform ${expandedSections.includes("silence") ? "rotate-180" : ""}`}
+//                 />
+//               </Button>
+//             </div>
+//           </div>
+//           <div className="p-4">
+//             <Textarea defaultValue="Are you still there? Maybe I missed what you said." className="min-h-[100px]" />
+//           </div>
+//         </div>
+
+//         <div className="flex justify-between">
+//           <Button variant="outline">Reset to default</Button>
+//           <Button className="bg-teal-600 hover:bg-teal-700 text-white">Save</Button>
+//         </div>
+//       </div>
+//     </div>
+//   )
+// }
+
 // Agent Prompts Tab (keeping existing)
-function AgentPromptsTab() {
-  const [agentPrompt, setAgentPrompt] =
-    useState(`You are a virtual agent having a spoken conversation. This is who you are: Real estate agent who does resale and precon
+function AgentPromptsTab({ agentId }: { agentId: string }) {
+  const [agentPrompt, setAgentPrompt] = useState("")
+  const { toast } = useToast()
 
-Ask them what kind of help they need, keeping your goal below in mind.
+  useEffect(() => {
+    const fetchPrompt = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`, {
+          headers: {
+            Authorization: `Token ${Cookies.get("Token") || ""}`,
+          },
+        })
 
-GOAL: Your goal in this call is to collect the following information: Close/followup leads
+        if (!res.ok) throw new Error("Failed to fetch agent prompt")
+        const data = await res.json()
 
-This is a spoken conversation. You should ask questions one at a time. You are having a colloquial, friendly conversation.`)
+        if (data.prompt) setAgentPrompt(data.prompt)
+      } catch (err: any) {
+        toast({ title: "Error", description: err.message || "Failed to load agent prompt." })
+      }
+    }
+
+    if (agentId) fetchPrompt()
+  }, [agentId])
+
+  const handleSave = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Token ${Cookies.get("Token") || ""}`,
+        },
+        body: JSON.stringify({
+          prompt: agentPrompt,
+        }),
+      })
+
+      if (!res.ok) throw new Error("Failed to save agent prompt")
+
+      toast({ title: "Success", description: "Agent prompt saved successfully." })
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message })
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -1729,16 +1996,17 @@ This is a spoken conversation. You should ask questions one at a time. You are h
                 <WrapText className="w-4 h-4 mr-2" />
                 WORD WRAP: OFF
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => {
+                navigator.clipboard.writeText(agentPrompt)
+                toast({ title: "Copied", description: "Prompt copied to clipboard." })
+              }}>
                 <Copy className="w-4 h-4 mr-2" />
                 COPY
               </Button>
-              <Button variant="outline" size="sm">
-                <History className="w-4 h-4 mr-2" />
-                HISTORY
-              </Button>
             </div>
-            <div className="text-sm text-slate-500">7 lines, 423 characters</div>
+            <div className="text-sm text-slate-500">
+              {agentPrompt.split("\n").length} lines, {agentPrompt.length} characters
+            </div>
           </div>
 
           <div className="relative">
@@ -1759,19 +2027,122 @@ This is a spoken conversation. You should ask questions one at a time. You are h
         </div>
 
         <div className="flex justify-end">
-          <Button className="bg-green-600 hover:bg-green-700 text-white px-8">SAVE ALL</Button>
+          <Button
+            className="bg-green-600 hover:bg-green-700 text-white px-8"
+            onClick={handleSave}
+          >
+            SAVE ALL
+          </Button>
         </div>
       </div>
     </div>
   )
 }
 
+
 // Voice Settings Tab (keeping existing)
-function VoiceSettingsTab() {
+function VoiceSettingsTab({ agentId }: { agentId: string }) {
+  const { toast } = useToast()
   const [stability, setStability] = useState(50)
-  const [clarity, setClarity] = useState(75)
-  const [styleExaggeration, setStyleExaggeration] = useState(0)
+  const [clarity, setClarity] = useState(50)
+  const [styleExaggeration, setStyleExaggeration] = useState(50)
   const [speakerBoost, setSpeakerBoost] = useState(true)
+
+  useEffect(() => {
+    async function fetchSettings() {
+      try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Token ${Cookies.get("Token") || ""}`,
+        },
+      })
+      const data = await res.json()
+      setStability(data.voice_stability || 50)
+      setClarity(data.voice_clarity || 50)
+      setStyleExaggeration(data.voice_style || 50)
+      setSpeakerBoost(data.speaker_boost ?? true)
+    } catch (error) {
+      console.error("Failed to load voice settings:", error)
+    }
+    }
+
+    fetchSettings()
+  }, [agentId])
+
+  const handleSave = async () => {
+    try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Token ${Cookies.get("Token") || ""}`,
+      },
+      body: JSON.stringify({
+        voice_stability: stability,
+        voice_clarity: clarity,
+        voice_style: styleExaggeration,
+        speaker_boost: speakerBoost,
+      }),
+    })
+
+    if (res.ok) {
+      toast({
+        title: "Voice settings updated",
+        description: "Your voice preferences have been saved successfully.",
+      })
+    } else {
+      throw new Error("Failed to update")
+    }
+  } catch (error) {
+    console.error("Failed to save voice settings:", error)
+    toast({
+      title: "Update failed",
+      description: "Something went wrong while saving voice settings.",
+      variant: "destructive",
+    })
+  }
+  }
+
+  const handleReset = async () => {
+    setStability(50)
+  setClarity(50)
+  setStyleExaggeration(50)
+  setSpeakerBoost(true)
+
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Token ${Cookies.get("Token") || ""}`,
+      },
+      body: JSON.stringify({
+        voice_stability: 50,
+        voice_clarity: 50,
+        voice_style: 50,
+        speaker_boost: true,
+      }),
+    })
+
+    if (res.ok) {
+      toast({
+        title: "Voice settings reset",
+        description: "All values have been reset to default.",
+      })
+    } else {
+      throw new Error("Failed to reset")
+    }
+  } catch (error) {
+    console.error("Failed to reset voice settings:", error)
+    toast({
+      title: "Reset failed",
+      description: "Something went wrong while resetting the settings.",
+      variant: "destructive",
+    })
+  }
+  }
 
   return (
     <div className="space-y-8">
@@ -1787,116 +2158,55 @@ function VoiceSettingsTab() {
         </div>
       </div>
 
-      {/* Model Selection */}
-      <div className="space-y-4">
-        <div className="flex items-center space-x-2">
-          <h3 className="text-lg font-medium text-slate-800">Model</h3>
-          <div className="w-5 h-5 bg-slate-400 rounded-full flex items-center justify-center">
-            <span className="text-white text-xs">i</span>
-          </div>
-        </div>
-        <Select defaultValue="multilingual-v2">
-          <SelectTrigger className="w-64">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="multilingual-v2">Multilingual V2</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* Stability Slider */}
       <div className="space-y-4">
         <h3 className="text-lg font-medium text-slate-800">Stability</h3>
         <div className="space-y-2">
           <div className="text-sm text-slate-600">{stability}%</div>
-          <div className="relative">
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={stability}
-              onChange={(e) => setStability(Number(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-            />
-          </div>
-          <div className="flex justify-between text-sm text-slate-600">
-            <div className="flex items-center space-x-1">
-              <span>More variable</span>
-              <div className="w-4 h-4 bg-slate-400 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs">i</span>
-              </div>
-            </div>
-            <div className="flex items-center space-x-1">
-              <span>More stable</span>
-              <div className="w-4 h-4 bg-slate-400 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs">i</span>
-              </div>
-            </div>
-          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={stability}
+            onChange={(e) => setStability(Number(e.target.value))}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+          />
         </div>
       </div>
 
-      {/* Clarity + Similarity Enhancement Slider */}
+      {/* Clarity Slider */}
       <div className="space-y-4">
         <h3 className="text-lg font-medium text-slate-800">Clarity + Similarity Enhancement</h3>
         <div className="space-y-2">
           <div className="text-sm text-slate-600">{clarity}%</div>
-          <div className="relative">
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={clarity}
-              onChange={(e) => setClarity(Number(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-            />
-          </div>
-          <div className="flex justify-between text-sm text-slate-600">
-            <div className="flex items-center space-x-1">
-              <span>Low</span>
-              <div className="w-4 h-4 bg-slate-400 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs">i</span>
-              </div>
-            </div>
-            <div className="flex items-center space-x-1">
-              <span>High</span>
-              <div className="w-4 h-4 bg-slate-400 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs">i</span>
-              </div>
-            </div>
-          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={clarity}
+            onChange={(e) => setClarity(Number(e.target.value))}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+          />
         </div>
       </div>
 
-      {/* Style Exaggeration Slider */}
+      {/* Style Exaggeration */}
       <div className="space-y-4">
         <h3 className="text-lg font-medium text-slate-800">Style Exaggeration</h3>
         <div className="space-y-2">
           <div className="text-sm text-slate-600">{styleExaggeration}%</div>
-          <div className="relative">
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={styleExaggeration}
-              onChange={(e) => setStyleExaggeration(Number(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-            />
-          </div>
-          <div className="flex justify-between text-sm text-slate-600">
-            <span>None (Fastest)</span>
-            <div className="flex items-center space-x-1">
-              <span>Exaggerated</span>
-              <div className="w-4 h-4 bg-slate-400 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs">i</span>
-              </div>
-            </div>
-          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={styleExaggeration}
+            onChange={(e) => setStyleExaggeration(Number(e.target.value))}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+          />
         </div>
       </div>
 
-      {/* Speaker Boost */}
+      {/* Speaker Boost Toggle */}
       <div className="space-y-4">
         <div className="flex items-center space-x-3">
           <input
@@ -1909,23 +2219,17 @@ function VoiceSettingsTab() {
           <label htmlFor="speaker-boost" className="text-slate-800">
             Speaker Boost
           </label>
-          <div className="w-4 h-4 bg-slate-400 rounded-full flex items-center justify-center">
-            <span className="text-white text-xs">i</span>
-          </div>
         </div>
       </div>
 
       {/* Action Buttons */}
       <div className="flex justify-between items-center pt-6">
-        <Button variant="outline" className="text-blue-600 border-blue-600 bg-transparent">
+        <Button variant="outline" className="text-blue-600 border-blue-600 bg-transparent" onClick={handleReset}>
           RESET TO DEFAULT
         </Button>
-        <div className="flex space-x-4">
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8">SAVE CHANGES</Button>
-          <Button variant="outline" className="text-blue-600 border-blue-600 bg-transparent">
-            PLAY TEST SAMPLE
-          </Button>
-        </div>
+        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSave}>
+          SAVE CHANGES
+        </Button>
       </div>
     </div>
   )
@@ -2341,11 +2645,11 @@ export default function AgentSettingsPage() {
       case "voiceprint":
         return <VoiceprintTab />
       case "voice-prompts":
-        return <VoicePromptsTab />
+        return <VoicePromptsTab agentId={selectedAgent.id} />
       case "agent-prompts":
-        return <AgentPromptsTab />
+        return <AgentPromptsTab agentId={selectedAgent.id}/>
       case "voice-settings":
-        return <VoiceSettingsTab />
+        return <VoiceSettingsTab agentId={selectedAgent.id} />
       case "faq":
         return <FAQTab agentId={selectedAgent.id} />
       default:

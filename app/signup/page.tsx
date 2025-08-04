@@ -11,6 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { MessageSquare, Upload, Building, CheckCircle } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
+
 
 const countries = [
   "Afghanistan",
@@ -324,12 +327,8 @@ export default function SignupPage() {
   }
 
   const validateWebsite = (website: string) => {
-    try {
-      new URL(website.startsWith("http") ? website : `https://${website}`)
-      return true
-    } catch {
-      return false
-    }
+   const regex = /^www\.[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$/;
+    return regex.test(website);
   }
 
   const validatePassword = (password: string) => {
@@ -400,7 +399,7 @@ export default function SignupPage() {
     else if (Number.parseInt(formData.companySince) > new Date().getFullYear()) {
       newErrors.companySince = "Founding year cannot be in the future"
     }
-    if (!formData.plan) newErrors.plan = "Please select a plan"
+    // if (!formData.plan) newErrors.plan = "Please select a plan"
 
     if (!formData.password) {
       newErrors.password = "Password is required"
@@ -431,7 +430,8 @@ export default function SignupPage() {
       industry: formData.industry,
       company_size: formData.companySize,
       company_since: Number.parseInt(formData.companySince),
-      plan: formData.plan,
+      plan: null,
+      // formData.plan || 
       logo: formData.logo,
       // Default values (not shown in form)
       status: "Pending",
@@ -449,13 +449,13 @@ export default function SignupPage() {
       body.append("name", formData.name)
       body.append("email", formData.email)
       body.append("phone", formData.phone)
-      body.append("website", formData.website || "")
+      body.append("website", "https://" + formData.website || "")
       body.append("description", formData.description)
       body.append("address", `${formData.address}, ${formData.city}, ${formData.postalCode}, ${formData.country}`)
       body.append("industry", formData.industry)
       body.append("company_size", formData.companySize)
       body.append("company_since", String(Number.parseInt(formData.companySince)))
-      body.append("plan", formData.plan)
+      body.append("plan", "Basic")
       body.append("password", formData.password)
       body.append("confirm_password", formData.confirmPassword)
 
@@ -471,7 +471,16 @@ export default function SignupPage() {
       if (formData.logo) {
         body.append("logo", formData.logo)
       }
-      console.log(body.get("logo"), "Logo file")
+      console.log(body.get("name"))
+      console.log(body.get("email"))
+      console.log(body.get("phone"))
+      console.log(body.get("website"))
+      console.log(body.get("description"))
+      console.log(body.get("address"))
+      console.log(body.get("industry"))
+      console.log(body.get("company_size"))
+      console.log(body.get("company_since"))
+      console.log(body.get("password"))
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/companies/`, {
         method: "POST",
@@ -592,14 +601,21 @@ export default function SignupPage() {
                   <Label htmlFor="phone" className="text-slate-700">
                     Phone Number *
                   </Label>
-                  <Input
-                    id="phone"
-                    placeholder="+1 (555) 123-4567"
+                  <PhoneInput
+                    country={'us'}
                     value={formData.phone}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
-                    className={`h-11 transition-all duration-200 ${errors.phone ? "border-red-500 focus:border-red-500" : "focus:border-teal-500"}`}
+                    onChange={(phone) => handleInputChange("phone", phone)}
+                    inputProps={{
+                      name: 'phone',
+                      required: true,
+                      className: `h-11 w-full border px-3 py-2 rounded-md focus:outline-none transition-all duration-200 ${
+                        errors.phone ? 'border-red-500 focus:border-red-500' : 'focus:border-teal-500'
+                      }`,
+                    }}
+                    containerClass="w-full"
                   />
                   {errors.phone && <p className="text-sm text-red-500">{errors.phone}</p>}
+                  
                 </div>
 
                 <div className="space-y-2">
@@ -608,7 +624,7 @@ export default function SignupPage() {
                   </Label>
                   <Input
                     id="website"
-                    placeholder="https://www.company.com"
+                    placeholder="www.company.com"
                     value={formData.website}
                     onChange={(e) => handleInputChange("website", e.target.value)}
                     className={`h-11 transition-all duration-200 ${errors.website ? "border-red-500 focus:border-red-500" : "focus:border-teal-500"}`}
@@ -827,7 +843,7 @@ export default function SignupPage() {
             </div>
 
             {/* Plan Selection */}
-            <div className="space-y-4">
+            {/* <div className="space-y-4">
               <h3 className="text-lg font-semibold text-slate-800 border-b pb-2">Select Plan</h3>
 
               <div className="space-y-2">
@@ -853,7 +869,7 @@ export default function SignupPage() {
                 </Select>
                 {errors.plan && <p className="text-sm text-red-500">{errors.plan}</p>}
               </div>
-            </div>
+            </div> */}
 
             <Button
               type="submit"
