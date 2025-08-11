@@ -400,6 +400,8 @@ import { cn } from "@/lib/utils"
 import { AudioPlayer } from "@/components/ui/audio-player"
 import { useToast } from "@/hooks/use-toast"
 import Cookies from "js-cookie"
+import { useRouter } from "next/navigation"
+
 
 interface AddAgentWizardProps {
   isOpen: boolean
@@ -442,6 +444,7 @@ const predefinedVoices = [
 ]
 
 export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizardProps) {
+  const router = useRouter()
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState<AgentFormData>({
     name: "",
@@ -562,6 +565,7 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
         selectedVoiceId: predefinedVoices[0].id,
         uploadedVoiceFile: null,
       })
+      //router.push("/dashboard/agents")
       onClose()
     } catch (error) {
       console.error(error)

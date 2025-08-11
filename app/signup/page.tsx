@@ -449,7 +449,7 @@ export default function SignupPage() {
       body.append("name", formData.name)
       body.append("email", formData.email)
       body.append("phone", formData.phone)
-      body.append("website", "https://" + formData.website || "")
+      body.append("website", formData.website || "")
       body.append("description", formData.description)
       body.append("address", `${formData.address}, ${formData.city}, ${formData.postalCode}, ${formData.country}`)
       body.append("industry", formData.industry)

@@ -428,6 +428,36 @@ export default function AgentsPage() {
       })
   }, [])
 
+  const fetchAgents = () => {
+  fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/`, {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Token ${Cookies.get("Token") || ""}`,
+    },
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      const enriched = Array.isArray(data)
+        ? data.map((agent) => ({
+            id: agent.id,
+            name: agent.name,
+            status: agent.status === "Active" || agent.status === "active" ? "Active" : "Inactive",
+            persona: agent.persona || "Unknown",
+            primary: agent.primary || false,
+          }))
+        : []
+      setAgents(enriched)
+    })
+    .catch(() => {
+      toast({
+        title: "Error",
+        description: "Failed to fetch agents",
+        variant: "destructive",
+      })
+    })
+}
+
+
   const handleToggleAgentStatus = async (id: number) => {
     const token = Cookies.get("Token") || ""
     const agentToUpdate = agents.find((agent) => agent.id === id)
@@ -594,7 +624,7 @@ export default function AgentsPage() {
               <AddAgentWizard
                 isOpen={isAddAgentWizardOpen}
                 onClose={() => setIsAddAgentWizardOpen(false)}
-                onAgentAdded={() => {}}
+                onAgentAdded={fetchAgents}
               />
             </Dialog>
           </div>
