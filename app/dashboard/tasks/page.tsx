@@ -1,91 +1,57 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Settings, Power, Trash2, Plus } from "lucide-react"
+import { Settings, Trash2, Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
+import Cookies from "js-cookie"
 
-interface Task {
-  id: string
-  name: string
-  type: string
-  status: "active" | "inactive"
-  lastModified: string
-  description?: string
+interface ActionLog {
+  content_type: string
+  user: string
+  action: string
+  timestamp: string
+  object_id: string
+  description: string
 }
 
-export default function TasksPage() {
+export default function ActionLogsPage() {
   const router = useRouter()
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: "1",
-      name: "Conversation to Webhook",
-      type: "Conversation to Webhook",
-      status: "inactive",
-      lastModified: "7/4/2025, 5:29:35 PM",
-      description: "<Not Set>",
-    },
-    {
-      id: "2",
-      name: "CALENDAR : Microsoft",
-      type: "CALENDAR : Microsoft",
-      status: "inactive",
-      lastModified: "3/22/2025, 12:59:04 AM",
-      description: "calendar-microsoft_0",
-    },
-    {
-      id: "3",
-      name: "Conversation To Transfer",
-      type: "Conversation To Transfer",
-      status: "inactive",
-      lastModified: "3/22/2025, 1:02:49 AM",
-      description: "<Not Set>",
-    },
-    {
-      id: "4",
-      name: "EmailValidator",
-      type: "EmailValidator",
-      status: "inactive",
-      lastModified: "3/22/2025, 1:04:26 AM",
-      description: "emailvalidator_0",
-    },
-    {
-      id: "5",
-      name: "Task Chain",
-      type: "Task Chain",
-      status: "inactive",
-      lastModified: "3/22/2025, 1:05:02 AM",
-      description: "<Not Set>",
-    },
-    {
-      id: "6",
-      name: "Voicemail",
-      type: "Voicemail",
-      status: "inactive",
-      lastModified: "3/22/2025, 1:05:22 AM",
-      description: "<Not Set>",
-    },
-  ])
-
+  const [logs, setLogs] = useState<ActionLog[]>([])
+  const [loading, setLoading] = useState(true)
   const [showUnpublishedBanner, setShowUnpublishedBanner] = useState(true)
 
-  const toggleTaskStatus = (taskId: string) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === taskId ? { ...task, status: task.status === "active" ? "inactive" : "active" } : task,
-      ),
-    )
-  }
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const res = await fetch("https://apii.pentagonai.co/api/reports/action-logs/", {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Token ${Cookies.get("Token") || ""}`,
+          },
+        })
 
-  const deleteTask = (taskId: string) => {
-    if (confirm("Are you sure you want to delete this task?")) {
-      setTasks(tasks.filter((task) => task.id !== taskId))
+        if (!res.ok) {
+          throw new Error(`Error: ${res.status} ${res.statusText}`)
+        }
+
+        const data = await res.json()
+        setLogs(data)
+      } catch (error) {
+        console.error("Error fetching logs:", error)
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
-  const openSettings = (taskId: string) => {
-    router.push(`/dashboard/tasks/${taskId}/settings`)
+    fetchLogs()
+  }, [])
+
+  const deleteLog = (logId: number) => {
+    if (confirm("Are you sure you want to delete this entry?")) {
+      setLogs(logs.filter((log) => log.id !== logId))
+    }
   }
 
   return (
@@ -105,7 +71,7 @@ export default function TasksPage() {
             </Button>
           </div>
           <button onClick={() => setShowUnpublishedBanner(false)} className="text-blue-400 hover:text-blue-600">
-            <span className="sr-only">Dismiss</span>×
+            ×
           </button>
         </div>
       )}
@@ -113,86 +79,78 @@ export default function TasksPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Task Management</h1>
-          <p className="text-sm text-gray-500 mt-1">Last Published: 1/1/1970, 5:00:00 AM</p>
+          <h1 className="text-2xl font-semibold text-gray-900">Action Logs</h1>
+          <p className="text-sm text-gray-500 mt-1">From API</p>
         </div>
         <div className="flex space-x-3">
           <Button className="bg-blue-600 hover:bg-blue-700">
             <Plus className="w-4 h-4 mr-2" />
-            ADD TASK
+            ADD
           </Button>
           <Button className="bg-green-600 hover:bg-green-700">
-            <div className="w-4 h-4 mr-2">📤</div>
-            PUBLISH CHANGES
+            📤 PUBLISH CHANGES
           </Button>
         </div>
       </div>
 
-      {/* Tasks Table */}
+      {/* Logs Table */}
       <div className="bg-white rounded-lg border">
         <div className="px-6 py-4 border-b border-gray-200">
-          <div className="grid grid-cols-4 gap-4 text-sm font-medium text-gray-500">
-            <div>Task Type</div>
-            <div>Status</div>
-            <div>Last Modified</div>
+          <div className="grid grid-cols-6 gap-4 text-sm font-medium text-gray-500">
+            <div>Description</div>
+            <div>Content Type</div>
+            <div>User</div>
+            <div>Action</div>
+            <div>Timestamp</div>
             <div>Actions</div>
           </div>
         </div>
 
-        <div className="divide-y divide-gray-200">
-          {tasks.map((task) => (
-            <div key={task.id} className="px-6 py-4">
-              <div className="grid grid-cols-4 gap-4 items-center">
-                <div>
-                  <div className="font-medium text-gray-900">{task.name}</div>
-                  <div className="text-sm text-gray-500 flex items-center space-x-2">
-                    <span>⚡ {task.description}</span>
-                    <span>❌ {task.description}</span>
+        {loading ? (
+          <div className="p-6 text-gray-500">Loading...</div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {logs.map((log) => (
+              <div key={log.id} className="px-6 py-4">
+                <div className="grid grid-cols-6 gap-4 items-center">
+                  <div className="text-sm text-gray-700">{log.description}</div>
+                  <div className="font-medium text-gray-900">{log.content_type}</div>
+                  <div>{log.user}</div>
+                  <div>
+                    <Badge
+                      className={`${
+                        log.action === "create"
+                          ? "bg-green-100 text-green-800"
+                          : log.action === "delete"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {log.action}
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {new Date(log.timestamp).toLocaleString()}
+                  </div>
+
+                  <div className="flex space-x-2">
+                    <Button size="sm" variant="outline" onClick={() => router.push(`/dashboard/tasks/${log.id}/settings`)}>
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => deleteLog(log.id)}
+                      className="p-2 text-red-600 border-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
-
-                <div>
-                  <Badge
-                    variant="secondary"
-                    className={`${
-                      task.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {task.status === "active" ? "Active" : "Inactive"}
-                  </Badge>
-                </div>
-
-                <div className="text-sm text-gray-500">{task.lastModified}</div>
-
-                <div className="flex space-x-2">
-                  <Button size="sm" variant="outline" onClick={() => openSettings(task.id)} className="p-2">
-                    <Settings className="w-4 h-4" />
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => toggleTaskStatus(task.id)}
-                    className={`p-2 ${
-                      task.status === "active" ? "text-green-600 border-green-600" : "text-gray-600 border-gray-600"
-                    }`}
-                  >
-                    <Power className="w-4 h-4" />
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => deleteTask(task.id)}
-                    className="p-2 text-red-600 border-red-600 hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
