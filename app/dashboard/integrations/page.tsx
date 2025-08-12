@@ -99,6 +99,7 @@
 
 import { Button } from "@/components/ui/button"
 import React from "react"
+import Cookies from "js-cookie"
 
 const integrations = [
   {
@@ -151,15 +152,39 @@ const integrations = [
 ]
 
 export default function IntegrationsPage() {
-  const handleConnect = (integration: any) => {
+  const handleConnect = async (integration: any) => {
     if (!integration.apiUrl) {
       console.log(`No API for ${integration.name}`)
       return
     }
-    // Redirect to the integration URL
-    window.location.href = integration.apiUrl
-  }
 
+    try {
+      const token = Cookies.get("Token") || ""
+
+      const res = await fetch(integration.apiUrl, {
+        method: "GET",
+        headers: {
+          "Authorization": `Token ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        console.error("Failed to get connect URL", errorData)
+        return
+      }
+
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        console.error("No URL returned from backend")
+      }
+    } catch (error) {
+      console.error("Error connecting integration:", error)
+    }
+  }
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
