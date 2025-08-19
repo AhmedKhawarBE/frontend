@@ -95,13 +95,10 @@
 //   )
 // }
 
-
-
-
 "use client"
 
 import { Button } from "@/components/ui/button"
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Cookies from "js-cookie"
 import {
   Dialog,
@@ -113,64 +110,108 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-const integrations = [
-  {
-    name: "Leadconnector (GHL) v2 - Standard",
-    status: "Not Connected",
-    statusColor: "text-orange-600",
-  },
-  {
-    name: "Leadconnector (GHL) v2 - Whitelabel",
-    status: "Not Connected",
-    statusColor: "text-orange-600",
-  },
-  {
-    name: "Hubspot",
-    status: "Not Connected",
-    statusColor: "text-orange-600",
-  },
-  {
-    name: "Google",
-    status: "Not Connected",
-    statusColor: "text-orange-600",
-  },
-  {
-    name: "Microsoft - Delegated",
-    status: "Not Connected",
-    statusColor: "text-orange-600",
-  },
-  {
-    name: "Microsoft - Admin",
-    status: "Not Connected",
-    statusColor: "text-orange-600",
-  },
-  {
-    name: "Salesforce",
-    status: "Not Connected",
-    statusColor: "text-orange-600",
-    hasDocumentation: true,
-  },
-  {
-    name: "Accesse 11",
-    status: "Not Connected",
-    statusColor: "text-orange-600",
-    apiUrl: "https://apii.pentagonai.co/api/integrations/accesse11/connect/",
-    requiresCredentials: true, // 👈 added flag
-  },
-  {
-    name: "Clover",
-    status: "Not Connected",
-    statusColor: "text-orange-600",
-    apiUrl: "https://apii.pentagonai.co/api/integrations/clover/connect/",
-  },
-]
-
 export default function IntegrationsPage() {
+  const [integrations, setIntegrations] = useState<any[]>([
+    {
+      key: "ghl-standard",
+      name: "Leadconnector (GHL) v2 - Standard",
+      status: "Not Connected",
+      statusColor: "text-orange-600",
+    },
+    {
+      key: "ghl-whitelabel",
+      name: "Leadconnector (GHL) v2 - Whitelabel",
+      status: "Not Connected",
+      statusColor: "text-orange-600",
+    },
+    {
+      key: "hubspot",
+      name: "Hubspot",
+      status: "Not Connected",
+      statusColor: "text-orange-600",
+    },
+    {
+      key: "google",
+      name: "Google",
+      status: "Not Connected",
+      statusColor: "text-orange-600",
+    },
+    {
+      key: "ms-delegated",
+      name: "Microsoft - Delegated",
+      status: "Not Connected",
+      statusColor: "text-orange-600",
+    },
+    {
+      key: "ms-admin",
+      name: "Microsoft - Admin",
+      status: "Not Connected",
+      statusColor: "text-orange-600",
+    },
+    {
+      key: "salesforce",
+      name: "Salesforce",
+      status: "Not Connected",
+      statusColor: "text-orange-600",
+      hasDocumentation: true,
+    },
+    {
+      key: "accesse11",
+      name: "Accesse 11",
+      status: "Not Connected",
+      statusColor: "text-orange-600",
+      apiUrl: "http://127.0.0.1:8000/api/integrations/accesse11/connect/",
+      requiresCredentials: true,
+    },
+    {
+      key: "clover",
+      name: "Clover",
+      status: "Not Connected",
+      statusColor: "text-orange-600",
+      apiUrl: "https://apii.pentagonai.co/api/integrations/clover/connect/",
+    },
+  ])
+
   const [isAccesseModalOpen, setIsAccesseModalOpen] = useState(false)
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [currentIntegration, setCurrentIntegration] = useState<any>(null)
 
+  // 🔹 Fetch connected integrations on mount
+  useEffect(() => {
+    const fetchIntegrations = async () => {
+      try {
+        const res = await fetch("http://127.0.0.1:8000/api/integrations/crm-integrations/", {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Token ${Cookies.get("Token") || ""}`,
+          },
+        })
+
+        if (!res.ok) throw new Error("Failed to fetch integrations")
+        const data = await res.json()
+
+        const connected = data.map((item: any) => item.integration_name.toLowerCase())
+
+        setIntegrations((prev) =>
+          prev.map((integration) => {
+            const isConnected = connected.includes(integration.key)
+            return {
+              ...integration,
+              status: isConnected ? "Connected" : "Not Connected",
+              statusColor: isConnected ? "text-green-600" : "text-orange-600",
+            }
+          })
+        )
+      } catch (error) {
+        console.error("Error fetching integrations:", error)
+      }
+    }
+
+    fetchIntegrations()
+  }, [])
+
+  // 🔹 Handle connect button click
   const handleConnect = async (integration: any) => {
     if (integration.requiresCredentials) {
       setCurrentIntegration(integration)
@@ -189,18 +230,17 @@ export default function IntegrationsPage() {
       const res = await fetch(integration.apiUrl, {
         method: "GET",
         headers: {
-          "Authorization": `Token ${token}`,
+          Authorization: `Token ${token}`,
           "Content-Type": "application/json",
         },
       })
 
+      const data = await res.json()
       if (!res.ok) {
-        const errorData = await res.json()
-        console.error("Failed to get connect URL", errorData)
+        console.error("Failed to get connect URL", data)
         return
       }
 
-      const data = await res.json()
       if (data.url) {
         window.location.href = data.url
       } else {
@@ -211,6 +251,7 @@ export default function IntegrationsPage() {
     }
   }
 
+  // 🔹 Submit Accesse11 credentials
   const handleAccesseSubmit = async () => {
     if (!currentIntegration?.apiUrl) return
 
@@ -220,24 +261,28 @@ export default function IntegrationsPage() {
       const res = await fetch(currentIntegration.apiUrl, {
         method: "POST",
         headers: {
-          "Authorization": `Token ${token}`,
+          Authorization: `Token ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ username, password }),
       })
 
+      const data = await res.json()
       if (!res.ok) {
-        const errorData = await res.json()
-        console.error("Failed to connect Accesse11", errorData)
+        console.error("Failed to connect Accesse11", data)
         return
       }
 
-      const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        console.log("Connected successfully", data)
-      }
+      console.log("Connected successfully", data)
+
+      // ✅ Update status in UI
+      setIntegrations((prev) =>
+        prev.map((integration) =>
+          integration.key === "accesse11"
+            ? { ...integration, status: "Connected", statusColor: "text-green-600" }
+            : integration
+        )
+      )
     } catch (error) {
       console.error("Error connecting Accesse11:", error)
     } finally {
@@ -287,7 +332,7 @@ export default function IntegrationsPage() {
                       className="bg-green-600 hover:bg-green-700 text-white px-6 py-2"
                       onClick={() => handleConnect(integration)}
                     >
-                      CONNECT
+                      {integration.status === "Connected" ? "Reconnect" : "Connect"}
                     </Button>
                   </td>
                 </tr>
@@ -345,7 +390,6 @@ export default function IntegrationsPage() {
     </div>
   )
 }
-
 
 
 
