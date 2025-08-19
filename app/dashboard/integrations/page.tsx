@@ -99,6 +99,7 @@
 import { Button } from "@/components/ui/button"
 import React, { useState, useEffect } from "react"
 import Cookies from "js-cookie"
+import { useLocation } from "react-router-dom"
 import {
   Dialog,
   DialogContent,
@@ -140,7 +141,9 @@ export default function IntegrationsPage() {
   const [password, setPassword] = useState("")
   const [currentIntegration, setCurrentIntegration] = useState<any>(null)
 
-  // 🔹 Fetch connected integrations on mount
+  const location = useLocation() // 👈 track current route
+
+  // 🔹 Fetch connected integrations whenever user navigates to this page
   useEffect(() => {
     const fetchIntegrations = async () => {
       try {
@@ -173,7 +176,7 @@ export default function IntegrationsPage() {
     }
 
     fetchIntegrations()
-  }, [])
+  }, [location]) // 👈 runs on first mount + whenever route changes
 
   // 🔹 Handle connect button click
   const handleConnect = async (integration: any) => {
@@ -332,6 +335,7 @@ export default function IntegrationsPage() {
     </div>
   )
 }
+
 
 
 
