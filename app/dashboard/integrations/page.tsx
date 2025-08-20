@@ -94,6 +94,8 @@
 //     </div>
 //   )
 // }
+
+
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -121,9 +123,10 @@ const integrationKeyMap: Record<string, string> = {
   "microsoft - delegated": "ms-delegated",
   "microsoft - admin": "ms-admin",
   salesforce: "salesforce",
-  "accesse 11": "accesse11",
-  clover: "clover",
+  accesse11: "accesse11",   // ✅ no space
+  clover: "clover",         // ✅ direct match
 }
+
 
 export default function IntegrationsPage() {
   const [integrations, setIntegrations] = useState<any[]>([
@@ -133,9 +136,9 @@ export default function IntegrationsPage() {
     { key: "google", name: "Google", status: "Not Connected", statusColor: "text-orange-600" },
     { key: "ms-delegated", name: "Microsoft - Delegated", status: "Not Connected", statusColor: "text-orange-600" },
     { key: "ms-admin", name: "Microsoft - Admin", status: "Not Connected", statusColor: "text-orange-600" },
-    { key: "salesforce", name: "Salesforce", status: "Not Connected", statusColor: "text-orange-600", hasDocumentation: true },
-    { key: "accesse11", name: "Accesse 11", status: "Not Connected", statusColor: "text-orange-600", apiUrl: "https://apii.pentagonai.co/api/integrations/accesse11/connect/", requiresCredentials: true },
-    { key: "clover", name: "Clover", status: "Not Connected", statusColor: "text-orange-600", apiUrl: "https://apii.pentagonai.co/api/integrations/clover/connect/" },
+    { key: "salesforce", name: "Salesforce", status: "Not Connected", statusColor: "text-orange-600", hasDocumentation: true }, 
+    { key: "accesse11", name: "Accesse 11", status: "Not Connected", statusColor: "text-orange-600", apiUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/accesse11/connect/`, requiresCredentials: true },
+    { key: "clover", name: "Clover", status: "Not Connected", statusColor: "text-orange-600", apiUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/clover/connect/` },
   ])
 
   const [isAccesseModalOpen, setIsAccesseModalOpen] = useState(false)
@@ -147,38 +150,39 @@ const pathname = usePathname()
 
   // 🔹 Fetch connected integrations whenever user navigates to this page
   useEffect(() => {
-    const fetchIntegrations = async () => {
-      try {
-        const res = await fetch("https://apii.pentagonai.co/api/integrations/crm-integrations/", {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Token ${Cookies.get("Token") || ""}`,
-          },
-        })
+  const fetchIntegrations = async () => {
+    
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/crm-integrations/`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Token ${Cookies.get("Token") || ""}`,
+        },
+      })
 
-        if (!res.ok) throw new Error("Failed to fetch integrations")
-        const data = await res.json()
+      if (!res.ok) throw new Error("Failed to fetch integrations")
+      const data = await res.json()
 
-        // Backend gives: [{ integration_name: "Accesse 11", connected: true }, ...]
-        const connectedKeys = data
-          .filter((item: any) => item.connected)
-          .map((item: any) => integrationKeyMap[item.crm_type.toLowerCase()] || null)
-          .filter(Boolean)
+      // Backend gives crm_type like "clover", "accesse11", etc.
+      const connectedKeys = data
+        .filter((item: any) => item.status === "active")
+        .map((item: any) => integrationKeyMap[item.crm_type.toLowerCase()] || item.crm_type.toLowerCase())
 
-        setIntegrations((prev) =>
-          prev.map((integration) => ({
-            ...integration,
-            status: connectedKeys.includes(integration.key) ? "Connected" : "Not Connected",
-            statusColor: connectedKeys.includes(integration.key) ? "text-green-600" : "text-orange-600",
-          }))
-        )
-      } catch (error) {
-        console.error("Error fetching integrations:", error)
-      }
+      setIntegrations((prev) =>
+        prev.map((integration) => ({
+          ...integration,
+          status: connectedKeys.includes(integration.key) ? "Connected" : "Not Connected",
+          statusColor: connectedKeys.includes(integration.key) ? "text-green-600" : "text-orange-600",
+        }))
+      )
+    } catch (error) {
+      console.error("Error fetching integrations:", error)
     }
+  }
 
-    fetchIntegrations()
-  }, [pathname]) // 👈 runs on first mount + whenever route changes
+  fetchIntegrations()
+}, [pathname])
+
 
   // 🔹 Handle connect button click
   const handleConnect = async (integration: any) => {

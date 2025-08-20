@@ -24,8 +24,8 @@ export default function ActionLogsPage() {
 
   useEffect(() => {
     const fetchLogs = async () => {
-      try {
-        const res = await fetch("https://apii.pentagonai.co/api/reports/action-logs/", {
+      try {   
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/reports/action-logs/`, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Token ${Cookies.get("Token") || ""}`,
