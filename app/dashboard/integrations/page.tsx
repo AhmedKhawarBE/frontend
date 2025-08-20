@@ -162,7 +162,7 @@ const pathname = usePathname()
         // Backend gives: [{ integration_name: "Accesse 11", connected: true }, ...]
         const connectedKeys = data
           .filter((item: any) => item.connected)
-          .map((item: any) => integrationKeyMap[item.integration_name.toLowerCase()] || null)
+          .map((item: any) => integrationKeyMap[item.crm_type.toLowerCase()] || null)
           .filter(Boolean)
 
         setIntegrations((prev) =>
