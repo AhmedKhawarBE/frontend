@@ -281,31 +281,77 @@ const pathname = usePathname()
                 <th className="text-left p-4 font-medium">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
-              {integrations.map((integration, index) => (
-                <tr key={index} className="hover:bg-slate-50">
-                  <td className="p-4">
-                    <div className="flex items-center">
-                      <span className="text-slate-800">{integration.name}</span>
-                      {integration.hasDocumentation && (
-                        <span className="ml-2 text-blue-600 text-sm">(Documentation)</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <span className={integration.statusColor}>{integration.status}</span>
-                  </td>
-                  <td className="p-4">
-                    <Button
-                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-2"
-                      onClick={() => handleConnect(integration)}
-                    >
-                      {integration.status === "Connected" ? "Reconnect" : "Connect"}
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+                      <tbody className="divide-y divide-slate-200">
+  {integrations.map((integration, index) => (
+    <tr key={index} className="hover:bg-slate-50">
+      <td className="p-4">
+        <div className="flex items-center">
+          <span className="text-slate-800">{integration.name}</span>
+          {integration.hasDocumentation && (
+            <span className="ml-2 text-blue-600 text-sm">(Documentation)</span>
+          )}
+        </div>
+      </td>
+
+      <td className="p-4">
+        <span className={integration.statusColor}>{integration.status}</span>
+      </td>
+
+      <td className="p-4">
+        {integration.status === "Connected" ? (
+          <Button
+            className="bg-red-600 hover:bg-red-700 text-white px-6 py-2"
+            onClick={async () => {
+              try {
+                const token = Cookies.get("Token") || ""
+                let deleteUrl = ""
+
+                if (integration.key === "clover") {
+                  deleteUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/crm-integrations/clover/`
+                } else if (integration.key === "accesse11") {
+                  deleteUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/crm-integrations/accesse11/`
+                }
+
+                if (!deleteUrl) return
+
+                const res = await fetch(deleteUrl, {
+                  method: "DELETE",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Token ${token}`,
+                  },
+                })
+
+                if (!res.ok) throw new Error("Failed to disconnect")
+
+                // ✅ Update status in UI
+                setIntegrations((prev) =>
+                  prev.map((item) =>
+                    item.key === integration.key
+                      ? { ...item, status: "Not Connected", statusColor: "text-orange-600" }
+                      : item
+                  )
+                )
+              } catch (error) {
+                console.error("Error disconnecting integration:", error)
+              }
+            }}
+          >
+            Disconnect
+          </Button>
+        ) : (
+          <Button
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2"
+            onClick={() => handleConnect(integration)}
+          >
+            {integration.status === "Not Connected" ? "Connect" : "Reconnect"}
+          </Button>
+        )}
+      </td>
+    </tr>
+  ))}
+</tbody>
+
           </table>
         </div>
       </div>
