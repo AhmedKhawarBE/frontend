@@ -31,7 +31,10 @@ export default function CompaniesPage() {
         console.log(data)
         if (Array.isArray(data)) {
           setCompanies(data)
-        } else {
+        } else if (Array.isArray(data.results)) {
+  // paginated response (DRF style)
+  setCompanies(data.results)
+} else {
           console.error("Invalid companies response format", data)
         }
       } catch (err) {

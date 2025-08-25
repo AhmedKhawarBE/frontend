@@ -11,8 +11,8 @@ import { Home, Building2, Users, Settings, LogOut, Menu, X, Bell, User } from "l
 const sidebarItems = [
   { name: "Dashboard", href: "/admin/dashboard", icon: Home },
   { name: "Companies", href: "/admin/dashboard/companies", icon: Building2 },
-  { name: "Users", href: "/admin/dashboard/users", icon: Users },
-  { name: "Settings", href: "/admin/dashboard/settings", icon: Settings },
+  // { name: "Users", href: "/admin/dashboard/users", icon: Users },
+  // { name: "Settings", href: "/admin/dashboard/settings", icon: Settings },
 ]
 
 export default function AdminDashboardLayout({

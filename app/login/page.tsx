@@ -215,7 +215,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Eye, EyeOff, MessageSquare, Building, User } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { cn } from "@/lib/utils"
-import { toast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -227,9 +227,12 @@ export default function LoginPage() {
   const [twoFACode, setTwoFACode] = useState("")
   const [verifying2FA, setVerifying2FA] = useState(false)
   const [token_captcha, setTokenCaptcha] = useState("")
+  const [statusMessage, setStatusMessage] = useState("")
+
 
   const router = useRouter()
   const { login } = useAuth()
+  const { toast } = useToast()
 
   useEffect(() => {
     const storedLoginType = localStorage.getItem("loginType")
@@ -283,6 +286,16 @@ export default function LoginPage() {
       if (!response.ok) {
         throw new Error(data?.message || "Login failed")
       }
+      console.log("Login response:", data)
+      if (data.user_type === "company" && data.status !== "active") {
+        toast({
+          title: "Login blocked",
+          description: "Your company is not active. Please contact support.",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+        return
+      }
 
       if (data.token && data.user_type === "company_user" && !data.previous_last_login) {
         localStorage.setItem("user", JSON.stringify(data))
@@ -307,8 +320,13 @@ export default function LoginPage() {
       console.error("Login error:", err)
       alert(err.message)
     } finally {
-      setIsLoading(false)
-      ;(window as any).grecaptcha?.reset()
+      if (!require2FA) {
+    // only stop loading if login failed
+        if (!Cookies.get("Token")) {
+          setIsLoading(false)
+          ;(window as any).grecaptcha?.reset()
+        }
+      }
     }
   }
 
