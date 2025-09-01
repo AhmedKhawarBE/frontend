@@ -96,19 +96,19 @@ const navigationItems = [
     icon: User,
     companyOnly: true,
     children: [
-      // {
-      //   title: "Billing",
-      //   href: "/account-settings/billing",
-      //   icon: CreditCard,
-      // },
+      {
+        title: "Billing",
+        href: "/dashboard/account-settings/billing",
+        icon: CreditCard,
+      },
       // {
       //   title: "User Module",
-      //   href: "/account-settings/user-module",
+      //   href: "/dashboard/account-settings/user-module",
       //   icon: UserCog,
       // },
       {
         title: "Personal Settings",
-        href: "dashboard//account-settings/personal-settings",
+        href: "/dashboard/account-settings/personal-settings",
         icon: ShieldCheck,
       },
     ],
