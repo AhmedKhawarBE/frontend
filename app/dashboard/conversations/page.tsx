@@ -478,16 +478,597 @@
 // }
 
 
+// "use client"
 
+// import { useEffect, useState } from "react"
+// import { Button } from "@/components/ui/button"
+// import { Input } from "@/components/ui/input"
+// import { ChevronLeft, ChevronRight, Search, ChevronDown, ChevronUp } from "lucide-react"
+// import Cookies from "js-cookie"
+
+// interface Message {
+//   id: number
+//   user: number
+//   timestamp: string
+//   sessionID: string
+//   type: string
+//   user_question: string
+//   assistant_response: string
+//   summary: string
+// }
+
+// // Calls Tab Content
+// function CallsTab() {
+//   const [messages, setMessages] = useState<Message[]>([])
+//   const [loading, setLoading] = useState(true)
+//   const [error, setError] = useState<string | null>(null)
+//   const [currentPage, setCurrentPage] = useState(1)
+//   const [expandedTranscript, setExpandedTranscript] = useState<string | null>(null)
+//   const [expandedSummary, setExpandedSummary] = useState<string | null>(null)
+//   const pageSize = 5
+
+//   useEffect(() => {
+//     async function fetchMessages() {
+//       try {
+//         setLoading(true)
+//         const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/conversations/messages/`, {
+//           method: "GET",
+//           headers: {
+//             "Content-Type": "application/json",
+//             Authorization: `Token ${Cookies.get("Token") || ""}`,
+//           },
+//         })
+
+//         if (!res.ok) throw new Error("Failed to fetch messages")
+//         const data: Message[] = await res.json()
+//         console.log("Fetched messages:", data)
+//         setMessages(data)
+//       } catch (err: any) {
+//         setError(err.message)
+//       } finally {
+//         setLoading(false)
+//       }
+//     }
+//     fetchMessages()
+//   }, [])
+
+//   // Group messages by sessionID (each call)
+//   const grouped = messages.reduce<Record<string, Message[]>>((acc, msg) => {
+//     if (!acc[msg.sessionID]) acc[msg.sessionID] = []
+//     acc[msg.sessionID].push(msg)
+//     return acc
+//   }, {})
+
+//   // Sort conversations by first timestamp
+//   const sortedSessions = Object.entries(grouped).sort((a, b) => {
+//     const firstA = new Date(a[1][0].timestamp).getTime()
+//     const firstB = new Date(b[1][0].timestamp).getTime()
+//     return firstB - firstA
+//   })
+
+//   // Pagination
+//   const totalPages = Math.ceil(sortedSessions.length / pageSize)
+//   const paginated = sortedSessions.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+//   if (loading) return <div className="p-6">Loading conversations...</div>
+//   if (error) return <div className="p-6 text-red-600">Error: {error}</div>
+
+//   return (
+//     <div className="space-y-6">
+//       {/* Search */}
+//       <div className="flex items-center justify-between">
+//         <div className="relative">
+//           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+//           <Input placeholder="Search by session ID or question" className="pl-10 w-80" />
+//         </div>
+//       </div>
+
+//       {/* Calls Table */}
+//       <div className="overflow-x-auto border rounded-lg">
+//         <table className="min-w-full text-sm text-left">
+//           <thead className="bg-slate-100 border-b">
+//             <tr>
+//               <th className="px-4 py-2 font-medium text-slate-700">Phone Number</th>
+//               <th className="px-4 py-2 font-medium text-slate-700">Messages</th>
+//               <th className="px-4 py-2 font-medium text-slate-700">Started At</th>
+//               <th className="px-4 py-2 font-medium text-slate-700">Transcript</th>
+//               <th className="px-4 py-2 font-medium text-slate-700">Summary</th>
+//             </tr>
+//           </thead>
+//           <tbody>
+//             {paginated.map(([sessionID, msgs]) => {
+//               const startedAt = new Date(msgs[0].timestamp).toLocaleString()
+
+//               // Get latest summary for this call
+//               const latestSummary = [...msgs]
+//                 .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+//                 .find((m) => m.type === "summary")
+
+//               const isTranscriptOpen = expandedTranscript === sessionID
+//               const isSummaryOpen = expandedSummary === sessionID
+
+//               return (
+//                 <>
+//                   <tr key={sessionID} className="border-b hover:bg-slate-50">
+//                     {/* Replace sessionID with phone number */}
+//                     <td className="px-4 py-2 font-medium text-slate-800">+19893943633</td>
+//                     <td className="px-4 py-2">{msgs.length}</td>
+//                     <td className="px-4 py-2 text-slate-600">{startedAt}</td>
+
+//                     {/* Transcript dropdown toggle */}
+//                     <td
+//                       className="px-4 py-2 text-right cursor-pointer"
+//                       onClick={() =>
+//                         setExpandedTranscript(isTranscriptOpen ? null : sessionID)
+//                       }
+//                     >
+//                       {isTranscriptOpen ? (
+//                         <ChevronUp className="w-4 h-4 inline" />
+//                       ) : (
+//                         <ChevronDown className="w-4 h-4 inline" />
+//                       )}
+//                     </td>
+
+//                     {/* Summary dropdown toggle */}
+//                     <td
+//                       className="px-4 py-2 text-right cursor-pointer"
+//                       onClick={() =>
+//                         setExpandedSummary(isSummaryOpen ? null : sessionID)
+//                       }
+//                     >
+//                       {isSummaryOpen ? (
+//                         <ChevronUp className="w-4 h-4 inline" />
+//                       ) : (
+//                         <ChevronDown className="w-4 h-4 inline" />
+//                       )}
+//                     </td>
+//                   </tr>
+
+//                   {/* Transcript expanded view */}
+//                   {isTranscriptOpen && (
+//                     <tr className="bg-slate-50">
+//                       <td colSpan={5} className="px-4 py-4">
+//                         <div className="space-y-4">
+//                           {[...msgs]
+//                             .sort(
+//                               (a, b) =>
+//                                 new Date(a.timestamp).getTime() -
+//                                 new Date(b.timestamp).getTime()
+//                             )
+//                             .map((m) => {
+//                               if (m.type === "summary") return null
+//                               return (
+//                                 <div
+//                                   key={m.id}
+//                                   className="border rounded-lg p-4 bg-white shadow-sm"
+//                                 >
+//                                   <p className="font-medium text-slate-700">
+//                                     👤 User:
+//                                   </p>
+//                                   <p className="mb-2 text-slate-800">
+//                                     {m.user_question}
+//                                   </p>
+//                                   <p className="font-medium text-slate-700">
+//                                     🤖 Assistant:
+//                                   </p>
+//                                   <p className="text-slate-800">
+//                                     {m.assistant_response}
+//                                   </p>
+//                                   <p className="text-xs text-slate-500 mt-2">
+//                                     {new Date(m.timestamp).toLocaleString()}
+//                                   </p>
+//                                 </div>
+//                               )
+//                             })}
+//                         </div>
+//                       </td>
+//                     </tr>
+//                   )}
+
+//                   {/* Summary expanded view */}
+//                   {isSummaryOpen && (
+//                     <tr className="bg-slate-50">
+//                       <td colSpan={5} className="px-4 py-4">
+//                         {latestSummary ? (
+//                           <div className="border rounded-lg p-4 bg-white shadow-sm">
+//                             <p className="font-medium text-slate-700">📋 Summary:</p>
+//                             <p className="text-slate-800">{latestSummary.summary}</p>
+//                             <p className="text-xs text-slate-500 mt-2">
+//                               {new Date(latestSummary.timestamp).toLocaleString()}
+//                             </p>
+//                           </div>
+//                         ) : (
+//                           <p className="text-slate-500">No summary available.</p>
+//                         )}
+//                       </td>
+//                     </tr>
+//                   )}
+//                 </>
+//               )
+//             })}
+//           </tbody>
+//         </table>
+//       </div>
+
+//       {/* Pagination Controls */}
+//       <div className="flex justify-between items-center">
+//         <Button
+//           variant="outline"
+//           size="sm"
+//           disabled={currentPage === 1}
+//           onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+//         >
+//           <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+//         </Button>
+//         <span className="text-sm text-slate-600">
+//           Page {currentPage} of {totalPages}
+//         </span>
+//         <Button
+//           variant="outline"
+//           size="sm"
+//           disabled={currentPage === totalPages}
+//           onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+//         >
+//           Next <ChevronRight className="w-4 h-4 ml-1" />
+//         </Button>
+//       </div>
+//     </div>
+//   )
+// }
+
+// // Placeholder tabs
+// function SMSTab() {
+//   return <div className="p-6 text-slate-500">SMS tab coming soon...</div>
+// }
+// function EmailsTab() {
+//   return <div className="p-6 text-slate-500">Emails tab coming soon...</div>
+// }
+// function WebChatsTab() {
+//   return <div className="p-6 text-slate-500">Web Chats tab coming soon...</div>
+// }
+
+// const tabs = [
+//   { id: "calls", label: "Calls" },
+//   { id: "sms", label: "SMS" },
+//   { id: "emails", label: "Emails" },
+//   { id: "web-chats", label: "Web Chats" },
+// ]
+
+// export default function ConversationsPage() {
+//   const [activeTab, setActiveTab] = useState("calls")
+
+//   const renderTabContent = () => {
+//     switch (activeTab) {
+//       case "calls":
+//         return <CallsTab />
+//       case "sms":
+//         return <SMSTab />
+//       case "emails":
+//         return <EmailsTab />
+//       case "web-chats":
+//         return <WebChatsTab />
+//       default:
+//         return <CallsTab />
+//     }
+//   }
+
+//   return (
+//     <div className="p-6 space-y-6">
+//       {/* Header */}
+//       <div className="flex items-center justify-between">
+//         <h1 className="text-2xl font-semibold text-slate-800">Conversations</h1>
+//       </div>
+
+//       {/* Tabs */}
+//       <div className="border-b border-slate-200">
+//         <div className="flex space-x-8">
+//           {tabs.map((tab) => (
+//             <button
+//               key={tab.id}
+//               onClick={() => setActiveTab(tab.id)}
+//               className={`pb-4 px-1 text-sm font-medium border-b-2 transition-colors ${
+//                 tab.id === activeTab
+//                   ? "border-blue-500 text-blue-600"
+//                   : "border-transparent text-slate-500 hover:text-slate-700"
+//               }`}
+//             >
+//               {tab.label}
+//             </button>
+//           ))}
+//         </div>
+//       </div>
+
+//       {/* Tab Content */}
+//       {renderTabContent()}
+//     </div>
+//   )
+// }
+
+
+
+// "use client"
+
+// import { useEffect, useState } from "react"
+// import { Button } from "@/components/ui/button"
+// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+// import { Input } from "@/components/ui/input"
+// import { ChevronLeft, ChevronRight, Search, ChevronDown, ChevronUp } from "lucide-react"
+// import Cookies from "js-cookie"
+// import React from "react"
+
+
+// interface Message {
+//   id: number
+//   user: number
+//   timestamp: string
+//   sessionID: string
+//   type: string
+//   user_question: string
+//   assistant_response: string
+//   summary: string
+// }
+
+// // Calls Tab Content
+// function CallsTab() {
+//   const [messages, setMessages] = useState<Message[]>([])
+//   const [loading, setLoading] = useState(true)
+//   const [error, setError] = useState<string | null>(null)
+//   const [currentPage, setCurrentPage] = useState(1)
+//   const [expanded, setExpanded] = useState<string | null>(null)
+//   const pageSize = 5
+
+//   useEffect(() => {
+//     async function fetchMessages() {
+//       try {
+//         setLoading(true)
+//         const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/conversations/messages/`, {
+//           method: "GET",
+//           headers: {
+//             "Content-Type": "application/json",
+//             Authorization: `Token ${Cookies.get("Token") || ""}`,
+//           },
+//         })
+
+//         if (!res.ok) throw new Error("Failed to fetch messages")
+//         const data: Message[] = await res.json()
+//       console.log("Fetched messages:", data)
+//         setMessages(data)
+//       } catch (err: any) {
+//         setError(err.message)
+//       } finally {
+//         setLoading(false)
+//       }
+//     }
+//     fetchMessages()
+//   }, [])
+
+//   // Group messages by sessionID (each call)
+//   const grouped = messages.reduce<Record<string, Message[]>>((acc, msg) => {
+//     if (!acc[msg.sessionID]) acc[msg.sessionID] = []
+//     acc[msg.sessionID].push(msg)
+//     return acc
+//   }, {})
+
+//   // Sort conversations by first timestamp
+//   const sortedSessions = Object.entries(grouped).sort((a, b) => {
+//     const firstA = new Date(a[1][0].timestamp).getTime()
+//     const firstB = new Date(b[1][0].timestamp).getTime()
+//     return firstB - firstA
+//   })
+
+//   // Pagination
+//   const totalPages = Math.ceil(sortedSessions.length / pageSize)
+//   const paginated = sortedSessions.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+//   if (loading) return <div className="p-6">Loading conversations...</div>
+//   if (error) return <div className="p-6 text-red-600">Error: {error}</div>
+
+//   return (
+//     <div className="space-y-6">
+//       {/* Search */}
+//       <div className="flex items-center justify-between">
+//         <div className="relative">
+//           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+//           <Input placeholder="Search by session ID or question" className="pl-10 w-80" />
+//         </div>
+//       </div>
+
+//       {/* Calls Table */}
+// <div className="overflow-x-auto border rounded-lg">
+//   <table className="min-w-full text-sm text-left">
+//     <thead className="bg-slate-100 border-b">
+//       <tr>
+//         <th className="px-4 py-2 font-medium text-slate-700">Phone Number</th>
+//         <th className="px-4 py-2 font-medium text-slate-700">Messages</th>
+//         <th className="px-4 py-2 font-medium text-slate-700">Started At</th>
+//         <th className="px-4 py-2 font-medium text-slate-700">Summary</th>
+//         <th className="px-4 py-2"></th>
+//       </tr>
+//     </thead>
+//    <tbody>
+//   {paginated.map(([sessionID, msgs]) => {
+//     const startedAt = new Date(msgs[0].timestamp).toLocaleString()
+//     const isOpen = expanded === sessionID
+
+//     // Get latest summary for this call
+//     const latestSummary = [...msgs]
+//       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+//       .find((m) => m.type === "summary")
+
+//     return (
+//       <React.Fragment key={sessionID}>
+//         <tr
+//           className="border-b hover:bg-slate-50 cursor-pointer"
+//           onClick={() => setExpanded(isOpen ? null : sessionID)}
+//         >
+//           {/* Replace sessionID with phone number */}
+//           <td className="px-4 py-2 font-medium text-slate-800">
+//             +19893943633
+//           </td>
+//           <td className="px-4 py-2">{msgs.length}</td>
+//           <td className="px-4 py-2 text-slate-600">{startedAt}</td>
+//           <td className="px-4 py-2 text-slate-600">
+//             {latestSummary ? latestSummary.summary : "No summary"}
+//           </td>
+//           <td className="px-4 py-2 text-right">
+//             {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+//           </td>
+//         </tr>
+
+//         {isOpen && (
+//           <tr className="bg-slate-50">
+//             <td colSpan={5} className="px-4 py-4">
+//               {/* Expanded message view */}
+//               <div className="space-y-4">
+//                 {(() => {
+//                   const sortedMsgs = [...msgs].sort(
+//                     (a, b) =>
+//                       new Date(a.timestamp).getTime() -
+//                       new Date(b.timestamp).getTime()
+//                   )
+//                   const latestSummary = [...sortedMsgs]
+//                     .reverse()
+//                     .find((m) => m.type === "summary")
+
+//                   return sortedMsgs.map((m) => {
+//                     if (m.type === "summary" && m.id !== latestSummary?.id) return null
+//                     return (
+//                       <div key={m.id} className="border rounded-lg p-4 bg-white shadow-sm">
+//                         {m.type === "summary" ? (
+//                           <>
+//                             <p className="font-medium text-slate-700">📋 Summary:</p>
+//                             <p className="text-slate-800">{m.summary}</p>
+//                           </>
+//                         ) : (
+//                           <>
+//                             <p className="font-medium text-slate-700">👤 User:</p>
+//                             <p className="mb-2 text-slate-800">{m.user_question}</p>
+//                             <p className="font-medium text-slate-700">🤖 Assistant:</p>
+//                             <p className="text-slate-800">{m.assistant_response}</p>
+//                           </>
+//                         )}
+//                         <p className="text-xs text-slate-500 mt-2">
+//                           {new Date(m.timestamp).toLocaleString()}
+//                         </p>
+//                       </div>
+//                     )
+//                   })
+//                 })()}
+//               </div>
+//             </td>
+//           </tr>
+//         )}
+//       </React.Fragment>
+//     )
+//   })}
+// </tbody>
+
+//   </table>
+// </div>
+
+
+//       {/* Pagination Controls */}
+//       <div className="flex justify-between items-center">
+//         <Button
+//           variant="outline"
+//           size="sm"
+//           disabled={currentPage === 1}
+//           onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+//         >
+//           <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+//         </Button>
+//         <span className="text-sm text-slate-600">
+//           Page {currentPage} of {totalPages}
+//         </span>
+//         <Button
+//           variant="outline"
+//           size="sm"
+//           disabled={currentPage === totalPages}
+//           onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+//         >
+//           Next <ChevronRight className="w-4 h-4 ml-1" />
+//         </Button>
+//       </div>
+//     </div>
+//   )
+// }
+
+// // Placeholder tabs
+// function SMSTab() {
+//   return <div className="p-6 text-slate-500">SMS tab coming soon...</div>
+// }
+// function EmailsTab() {
+//   return <div className="p-6 text-slate-500">Emails tab coming soon...</div>
+// }
+// function WebChatsTab() {
+//   return <div className="p-6 text-slate-500">Web Chats tab coming soon...</div>
+// }
+
+// const tabs = [
+//   { id: "calls", label: "Calls" },
+//   { id: "sms", label: "SMS" },
+//   { id: "emails", label: "Emails" },
+//   { id: "web-chats", label: "Web Chats" },
+// ]
+
+// export default function ConversationsPage() {
+//   const [activeTab, setActiveTab] = useState("calls")
+
+//   const renderTabContent = () => {
+//     switch (activeTab) {
+//       case "calls":
+//         return <CallsTab />
+//       case "sms":
+//         return <SMSTab />
+//       case "emails":
+//         return <EmailsTab />
+//       case "web-chats":
+//         return <WebChatsTab />
+//       default:
+//         return <CallsTab />
+//     }
+//   }
+
+//   return (
+//     <div className="p-6 space-y-6">
+//       {/* Header */}
+//       <div className="flex items-center justify-between">
+//         <h1 className="text-2xl font-semibold text-slate-800">Conversations</h1>
+//       </div>
+
+//       {/* Tabs */}
+//       <div className="border-b border-slate-200">
+//         <div className="flex space-x-8">
+//           {tabs.map((tab) => (
+//             <button
+//               key={tab.id}
+//               onClick={() => setActiveTab(tab.id)}
+//               className={`pb-4 px-1 text-sm font-medium border-b-2 transition-colors ${
+//                 tab.id === activeTab
+//                   ? "border-blue-500 text-blue-600"
+//                   : "border-transparent text-slate-500 hover:text-slate-700"
+//               }`}
+//             >
+//               {tab.label}
+//             </button>
+//           ))}
+//         </div>
+//       </div>
+
+//       {/* Tab Content */}
+//       {renderTabContent()}
+//     </div>
+//   )
+// }
 
 "use client"
 
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ChevronLeft, ChevronRight, Search, ChevronDown, ChevronUp } from "lucide-react"
 import Cookies from "js-cookie"
+import React from "react"
 
 interface Message {
   id: number
@@ -506,7 +1087,8 @@ function CallsTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [expanded, setExpanded] = useState<string | null>(null)
+  const [expandedTranscript, setExpandedTranscript] = useState<string | null>(null)
+  const [expandedSummary, setExpandedSummary] = useState<string | null>(null)
   const pageSize = 5
 
   useEffect(() => {
@@ -523,6 +1105,7 @@ function CallsTab() {
 
         if (!res.ok) throw new Error("Failed to fetch messages")
         const data: Message[] = await res.json()
+        console.log("Fetched messages:", data)
         setMessages(data)
       } catch (err: any) {
         setError(err.message)
@@ -569,108 +1152,122 @@ function CallsTab() {
         <table className="min-w-full text-sm text-left">
           <thead className="bg-slate-100 border-b">
             <tr>
-              <th className="px-4 py-2 font-medium text-slate-700">Session ID</th>
+              <th className="px-4 py-2 font-medium text-slate-700">Phone Number</th>
               <th className="px-4 py-2 font-medium text-slate-700">Messages</th>
               <th className="px-4 py-2 font-medium text-slate-700">Started At</th>
-              <th className="px-4 py-2"></th>
+              <th className="px-4 py-2 font-medium text-slate-700">Transcript</th>
+              <th className="px-4 py-2 font-medium text-slate-700">Summary</th>
             </tr>
           </thead>
           <tbody>
             {paginated.map(([sessionID, msgs]) => {
               const startedAt = new Date(msgs[0].timestamp).toLocaleString()
-              const isOpen = expanded === sessionID
+
+              // Get latest summary
+              const latestSummary = [...msgs]
+                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                .find((m) => m.type === "summary")
+
+              const previewTranscript = ""
+
+              const previewSummary = latestSummary
+                ? latestSummary.summary.split(" ").slice(0, 2).join(" ") + "..."
+                : "No summary"
+
+              const isTranscriptOpen = expandedTranscript === sessionID
+              const isSummaryOpen = expandedSummary === sessionID
+
               return (
-                <>
-                  <tr
-                    key={sessionID}
-                    className="border-b hover:bg-slate-50 cursor-pointer"
-                    onClick={() => setExpanded(isOpen ? null : sessionID)}
-                  >
-                    <td className="px-4 py-2 font-medium text-slate-800">{sessionID}</td>
+                <React.Fragment key={sessionID}>
+                  <tr className="border-b hover:bg-slate-50">
+                    <td className="px-4 py-2 font-medium text-slate-800">+19893943633</td>
                     <td className="px-4 py-2">{msgs.length}</td>
                     <td className="px-4 py-2 text-slate-600">{startedAt}</td>
-                    <td className="px-4 py-2 text-right">
-                      {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+
+                    {/* Transcript column - arrow only aligned right */}
+                    <td
+                      className="px-4 py-2 cursor-pointer text-slate-600 text-right"
+                      onClick={() =>
+                        setExpandedTranscript(isTranscriptOpen ? null : sessionID)
+                      }
+                    >
+                      {isTranscriptOpen ? (
+                        <ChevronUp className="w-4 h-4 inline" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 inline" />
+                      )}
+                    </td>
+
+                    {/* Summary column - text + arrow inline */}
+                    <td
+                      className="px-4 py-2 cursor-pointer text-slate-600"
+                      onClick={() => setExpandedSummary(isSummaryOpen ? null : sessionID)}
+                    >
+                      <span className="flex items-center justify-between">
+                        <span>{previewSummary}</span>
+                        {isSummaryOpen ? (
+                          <ChevronUp className="w-4 h-4 ml-2" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 ml-2" />
+                        )}
+                      </span>
                     </td>
                   </tr>
-                  {isOpen && (
-  <tr className="bg-slate-50">
-    <td colSpan={4} className="px-4 py-4">
-      <div className="space-y-4">
-        {(() => {
-          // Sort messages by timestamp
-          const sortedMsgs = [...msgs].sort(
-            (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-          )
 
-          // Get the latest summary (if any)
-          const latestSummary = [...sortedMsgs]
-            .reverse()
-            .find((m) => m.type === "summary")
+                  {/* Transcript expanded */}
+                  {isTranscriptOpen && (
+                    <tr className="bg-slate-50">
+                      <td colSpan={5} className="px-4 py-4">
+                        <div className="space-y-4">
+                          {[...msgs]
+                            .sort(
+                              (a, b) =>
+                                new Date(a.timestamp).getTime() -
+                                new Date(b.timestamp).getTime()
+                            )
+                            .map((m) => {
+                              if (m.type === "summary") return null
+                              return (
+                                <div
+                                  key={m.id}
+                                  className="border rounded-lg p-4 bg-white shadow-sm"
+                                >
+                                  <p className="font-medium text-slate-700">👤 User:</p>
+                                  <p className="mb-2 text-slate-800">{m.user_question}</p>
+                                  <p className="font-medium text-slate-700">🤖 Assistant:</p>
+                                  <p className="text-slate-800">{m.assistant_response}</p>
+                                  <p className="text-xs text-slate-500 mt-2">
+                                    {new Date(m.timestamp).toLocaleString()}
+                                  </p>
+                                </div>
+                              )
+                            })}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
 
-          return sortedMsgs.map((m) => {
-            // If it's a summary but not the latest one, skip it
-            if (m.type === "summary" && m.id !== latestSummary?.id) return null
-
-            return (
-              <div key={m.id} className="border rounded-lg p-4 bg-white shadow-sm">
-                {m.type === "summary" ? (
-                  <>
-                    <p className="font-medium text-slate-700">📋 Summary:</p>
-                    <p className="text-slate-800">{m.summary}</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="font-medium text-slate-700">👤 User:</p>
-                    <p className="mb-2 text-slate-800">{m.user_question}</p>
-                    <p className="font-medium text-slate-700">🤖 Assistant:</p>
-                    <p className="text-slate-800">{m.assistant_response}</p>
-                  </>
-                )}
-                <p className="text-xs text-slate-500 mt-2">
-                  {new Date(m.timestamp).toLocaleString()}
-                </p>
-              </div>
-            )
-          })
-        })()}
-      </div>
-    </td>
-  </tr>
-)}
-
-                  {/* {isOpen && (
-              <tr className="bg-slate-50">
-                <td colSpan={4} className="px-4 py-4">
-                  <div className="space-y-4">
-                    {msgs
-                      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-                      .map((m) => (
-                        <div key={m.id} className="border rounded-lg p-4 bg-white shadow-sm">
-                          {m.type === "summary" ? (
+                  {/* Summary expanded */}
+                  {isSummaryOpen && (
+                    <tr className="bg-slate-50">
+                      <td colSpan={5} className="px-4 py-4">
+                        <div className="border rounded-lg p-4 bg-white shadow-sm">
+                          {latestSummary ? (
                             <>
                               <p className="font-medium text-slate-700">📋 Summary:</p>
-                              <p className="text-slate-800">{m.summary}</p>
+                              <p className="text-slate-800">{latestSummary.summary}</p>
+                              <p className="text-xs text-slate-500 mt-2">
+                                {new Date(latestSummary.timestamp).toLocaleString()}
+                              </p>
                             </>
                           ) : (
-                            <>
-                              <p className="font-medium text-slate-700">👤 User:</p>
-                              <p className="mb-2 text-slate-800">{m.user_question}</p>
-                              <p className="font-medium text-slate-700">🤖 Assistant:</p>
-                              <p className="text-slate-800">{m.assistant_response}</p>
-                            </>
+                            <p className="text-slate-500">No summary available</p>
                           )}
-                          <p className="text-xs text-slate-500 mt-2">
-                            {new Date(m.timestamp).toLocaleString()}
-                          </p>
                         </div>
-                      ))}
-                  </div>
-                </td>
-              </tr>
-            )} */}
-
-                </>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               )
             })}
           </tbody>
