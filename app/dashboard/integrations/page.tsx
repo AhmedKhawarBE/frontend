@@ -449,7 +449,6 @@ export default function IntegrationsPage() {
   }
 
   // 🔹 Submit Accesse11 credentials
-  // 🔹 Submit Accesse11 credentials
 const handleAccesseSubmit = async () => {
   if (!currentIntegration?.apiUrl) return
 

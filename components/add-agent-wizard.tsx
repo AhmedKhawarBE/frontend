@@ -384,6 +384,8 @@
 //   )
 // }
 
+
+
 "use client"
 
 import type * as React from "react"
@@ -470,8 +472,8 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
   const handleVoiceFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      if (file.type !== "audio/mpeg") {
-        toast({ title: "Invalid file type", description: "Please upload an MP3 file.", variant: "destructive" })
+      if (!file.type.startsWith("audio/")) {
+        toast({ title: "Invalid file type", description: "Please upload an audio file (MP3, WAV, OGG).", variant: "destructive" })
         return
       }
       if (file.size > 5 * 1024 * 1024) {
@@ -492,8 +494,8 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
     e.stopPropagation()
     const file = e.dataTransfer.files?.[0]
     if (file) {
-      if (file.type !== "audio/mpeg") {
-        toast({ title: "Invalid file type", description: "Please upload an MP3 file.", variant: "destructive" })
+      if (!file.type.startsWith("audio/")) {
+        toast({ title: "Invalid file type", description: "Please upload an audio file (MP3, WAV, OGG).", variant: "destructive" })
         return
       }
       if (file.size > 5 * 1024 * 1024) {
@@ -527,28 +529,35 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
   const handleSubmit = async () => {
     try {
       setIsLoading(true)
-      console.log("Submitting agent data:", formData.name,
-          formData.persona,
-          formData.goals,
-          formData.prompt)
 
+      const formPayload = new FormData()
+      formPayload.append("name", formData.name)
+      formPayload.append("persona", formData.persona)
+      formPayload.append("goals", formData.goals)
+      formPayload.append("instructions", formData.prompt)
+      formPayload.append("status", "active")
+      if (formData.uploadedVoiceFile) {
+        formPayload.append("voice_clip", formData.uploadedVoiceFile)
+      } else if (formData.selectedVoiceId) {
+        formPayload.append("selected_voice", formData.selectedVoiceId)
+      }
+
+      const jsonPayload = JSON.stringify(Object.fromEntries(formPayload))
+      console.log("Submitting agent data:", jsonPayload)
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           "Authorization": `Token ${Cookies.get("Token") || ""}`,
         },
-        body: JSON.stringify({
-          name: formData.name,
-          persona: formData.persona,
-          goals: formData.goals,
-          prompt: formData.prompt,
-          //voice: formData.selectedVoiceId || "uploaded-voice",
-          status: "active",
-        }),
+        body: formPayload,
       })
 
-      if (!res.ok) throw new Error("Failed to create agent")
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null) // try to parse JSON
+        console.error("Backend error:", errorData || await res.text())
+        throw new Error(errorData?.error || "Failed to create agent")
+      }
+
 
       const createdAgent = await res.json()
       onAgentAdded(createdAgent)
@@ -565,7 +574,6 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
         selectedVoiceId: predefinedVoices[0].id,
         uploadedVoiceFile: null,
       })
-      //router.push("/dashboard/agents")
       onClose()
     } catch (error) {
       console.error(error)
@@ -573,8 +581,6 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
     } finally {
       setIsLoading(false)
     }
-
-    
   }
 
   const currentVoiceAudioSrc =
@@ -624,8 +630,7 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
               </div>
             )}
 
-            {/* step 3 remains unchanged */}
-             {step === 3 && (
+            {step === 3 && (
               <div className="space-y-6">
                 <h3 className="text-xl font-semibold text-gray-800">Voice Agent</h3>
                 <RadioGroup
@@ -686,11 +691,11 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
                     <Input
                       id="voice-upload"
                       type="file"
-                      accept="audio/mpeg"
+                      accept="audio/*"
                       className="sr-only"
                       onChange={handleVoiceFileUpload}
                     />
-                    <p className="text-xs text-gray-500 mt-1">Suggested format: Mp3. Maximum duration: 5 minute</p>
+                    <p className="text-xs text-gray-500 mt-1">Supported formats: MP3, WAV, OGG. Max size: 5MB.</p>
                     {formData.uploadedVoiceFile && (
                       <p className="text-sm text-gray-700 mt-2">Selected: {formData.uploadedVoiceFile.name}</p>
                     )}
@@ -712,8 +717,6 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
 }
 
 
-
-
 // "use client"
 
 // import type * as React from "react"
@@ -729,6 +732,9 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
 // import { cn } from "@/lib/utils"
 // import { AudioPlayer } from "@/components/ui/audio-player"
 // import { useToast } from "@/hooks/use-toast"
+// import Cookies from "js-cookie"
+// import { useRouter } from "next/navigation"
+
 
 // interface AddAgentWizardProps {
 //   isOpen: boolean
@@ -740,6 +746,7 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
 //   name: string
 //   persona: string
 //   goals: string
+//   prompt: string
 //   voiceType: "predefined" | "upload"
 //   selectedVoiceId?: string
 //   uploadedVoiceFile?: File | null
@@ -770,11 +777,13 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
 // ]
 
 // export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizardProps) {
+//   const router = useRouter()
 //   const [step, setStep] = useState(1)
 //   const [formData, setFormData] = useState<AgentFormData>({
 //     name: "",
 //     persona: "",
 //     goals: "",
+//     prompt: "",
 //     voiceType: "predefined",
 //     selectedVoiceId: predefinedVoices[0].id,
 //     uploadedVoiceFile: null,
@@ -795,19 +804,11 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
 //     const file = e.target.files?.[0]
 //     if (file) {
 //       if (file.type !== "audio/mpeg") {
-//         toast({
-//           title: "Invalid file type",
-//           description: "Please upload an MP3 file.",
-//           variant: "destructive",
-//         })
+//         toast({ title: "Invalid file type", description: "Please upload an MP3 file.", variant: "destructive" })
 //         return
 //       }
 //       if (file.size > 5 * 1024 * 1024) {
-//         toast({
-//           title: "File too large",
-//           description: "Maximum file size is 5MB.",
-//           variant: "destructive",
-//         })
+//         toast({ title: "File too large", description: "Maximum file size is 5MB.", variant: "destructive" })
 //         return
 //       }
 //       setFormData((prev) => ({ ...prev, voiceType: "upload", uploadedVoiceFile: file, selectedVoiceId: undefined }))
@@ -825,19 +826,11 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
 //     const file = e.dataTransfer.files?.[0]
 //     if (file) {
 //       if (file.type !== "audio/mpeg") {
-//         toast({
-//           title: "Invalid file type",
-//           description: "Please upload an MP3 file.",
-//           variant: "destructive",
-//         })
+//         toast({ title: "Invalid file type", description: "Please upload an MP3 file.", variant: "destructive" })
 //         return
 //       }
 //       if (file.size > 5 * 1024 * 1024) {
-//         toast({
-//           title: "File too large",
-//           description: "Maximum file size is 5MB.",
-//           variant: "destructive",
-//         })
+//         toast({ title: "File too large", description: "Maximum file size is 5MB.", variant: "destructive" })
 //         return
 //       }
 //       setFormData((prev) => ({ ...prev, voiceType: "upload", uploadedVoiceFile: file, selectedVoiceId: undefined }))
@@ -846,27 +839,15 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
 
 //   const handleNext = () => {
 //     if (step === 1 && !formData.name.trim()) {
-//       toast({
-//         title: "Agent Name Required",
-//         description: "Please enter a name for your agent.",
-//         variant: "destructive",
-//       })
+//       toast({ title: "Agent Name Required", description: "Please enter a name for your agent.", variant: "destructive" })
 //       return
 //     }
 //     if (step === 2 && !formData.persona.trim()) {
-//       toast({
-//         title: "Agent Persona Required",
-//         description: "Please describe the agent's persona.",
-//         variant: "destructive",
-//       })
+//       toast({ title: "Agent Persona Required", description: "Please describe the agent's persona.", variant: "destructive" })
 //       return
 //     }
-//     if (step === 3 && !formData.goals.trim()) {
-//       toast({
-//         title: "Agent Goals Required",
-//         description: "Please describe the agent's goals.",
-//         variant: "destructive",
-//       })
+//     if (step === 3 && (!formData.goals.trim() || !formData.prompt.trim())) {
+//       toast({ title: "Goals and Prompt Required", description: "Please complete both fields.", variant: "destructive" })
 //       return
 //     }
 //     setStep((prev) => prev + 1)
@@ -879,57 +860,54 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
 //   const handleSubmit = async () => {
 //     try {
 //       setIsLoading(true)
+//       console.log("Submitting agent data:", formData.name,
+//           formData.persona,
+//           formData.goals,
+//           formData.prompt)
 
-//       const payload = new FormData()
-//       payload.append("name", formData.name)
-//       payload.append("persona", formData.persona)
-//       payload.append("goals", formData.goals)
-//       if (formData.voiceType === "predefined" && formData.selectedVoiceId) {
-//         payload.append("voice_type", "predefined")
-//         payload.append("voice_id", formData.selectedVoiceId)
-//       } else if (formData.voiceType === "upload" && formData.uploadedVoiceFile) {
-//         payload.append("voice_type", "upload")
-//         payload.append("voice_file", formData.uploadedVoiceFile)
-//       }
-
-//       const response = await fetch("/api/agents/agents/", {
+//       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/`, {
 //         method: "POST",
-//         body: payload,
+//         headers: {
+//           "Content-Type": "application/json",
+//           "Authorization": `Token ${Cookies.get("Token") || ""}`,
+//         },
+//         body: JSON.stringify({
+//           name: formData.name,
+//           persona: formData.persona,
+//           goals: formData.goals,
+//           instructions: formData.prompt,
+//           //voice: formData.selectedVoiceId || "uploaded-voice",
+//           status: "active",
+//         }),
 //       })
 
-//       if (!response.ok) {
-//         throw new Error("Failed to create agent")
-//       }
+//       if (!res.ok) throw new Error("Failed to create agent")
 
-//       const newAgent = await response.json()
-//       onAgentAdded(newAgent)
+//       const createdAgent = await res.json()
+//       onAgentAdded(createdAgent)
 
-//       toast({
-//         title: "Agent Created!",
-//         description: "The agent will be charged according to your plan.",
-//         duration: 5000,
-//       })
+//       toast({ title: "Agent Created!", description: "The agent will be charged according to your plan.", duration: 5000 })
 
+//       setStep(1)
 //       setFormData({
 //         name: "",
 //         persona: "",
 //         goals: "",
+//         prompt: "",
 //         voiceType: "predefined",
 //         selectedVoiceId: predefinedVoices[0].id,
 //         uploadedVoiceFile: null,
 //       })
-//       setStep(1)
+//       //router.push("/dashboard/agents")
 //       onClose()
 //     } catch (error) {
-//       console.error("Add agent error:", error)
-//       toast({
-//         title: "Error",
-//         description: "Failed to create the agent. Please try again.",
-//         variant: "destructive",
-//       })
+//       console.error(error)
+//       toast({ title: "Error", description: "Unable to create agent.", variant: "destructive" })
 //     } finally {
 //       setIsLoading(false)
 //     }
+
+    
 //   }
 
 //   const currentVoiceAudioSrc =
@@ -938,8 +916,7 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
 //       : formData.uploadedVoiceFile
 //         ? URL.createObjectURL(formData.uploadedVoiceFile)
 //         : undefined
-      
-      
+
 //   return (
 //     <Dialog open={isOpen} onOpenChange={onClose}>
 //       <DialogContent className="max-w-4xl h-[90vh] p-0 flex flex-col">
@@ -947,88 +924,41 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
 //           <DialogTitle className="text-2xl font-bold text-gray-900">Add New Agent</DialogTitle>
 //         </DialogHeader>
 //         <div className="flex flex-1 overflow-hidden">
-//           {/* Left Sidebar */}
 //           <div className="w-64 bg-gradient-to-b from-teal-700 to-teal-900 text-white p-6 flex flex-col justify-between">
 //             <div>
 //               <h2 className="text-lg font-semibold mb-6">Question {step} of 3</h2>
 //               <div className="space-y-6">
 //                 {["Persona", "Goals", "Voice"].map((label, index) => (
 //                   <div key={label} className="flex items-center space-x-3">
-//                     <div
-//                       className={cn(
-//                         "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300",
-//                         step === index + 1
-//                           ? "bg-yellow-400 text-teal-900 ring-2 ring-yellow-400 ring-offset-2 ring-offset-teal-700"
-//                           : "bg-white/20 text-white/70",
-//                       )}
-//                     >
-//                       {index + 1}
-//                     </div>
-//                     <span
-//                       className={cn(
-//                         "text-lg font-medium transition-colors duration-300",
-//                         step === index + 1 ? "text-white" : "text-white/70",
-//                       )}
-//                     >
-//                       {label}
-//                     </span>
+//                     <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300", step === index + 1 ? "bg-yellow-400 text-teal-900 ring-2 ring-yellow-400 ring-offset-2 ring-offset-teal-700" : "bg-white/20 text-white/70")}>{index + 1}</div>
+//                     <span className={cn("text-lg font-medium transition-colors duration-300", step === index + 1 ? "text-white" : "text-white/70")}>{label}</span>
 //                   </div>
 //                 ))}
 //               </div>
 //             </div>
-//             <div className="text-sm text-white/60">
-//             </div>
 //           </div>
 
-//           {/* Main Content */}
 //           <div className="flex-1 p-8 flex flex-col justify-between overflow-auto">
 //             {step === 1 && (
 //               <div className="space-y-6">
 //                 <h3 className="text-xl font-semibold text-gray-800">What is the desired persona of the agent?</h3>
-//                 <p className="text-gray-600">
-//                   Describe the personality of your agent. For example: You are a real estate assistant for Simple
-//                   Realty. You work with both homeowners and homebuyers and are knowledgeable about trends in the housing
-//                   market. You have helped many people accomplish their goals in regard to home buying or selling.
-//                 </p>
-//                 <Input
-//                   id="name"
-//                   placeholder="Enter agent name"
-//                   value={formData.name}
-//                   onChange={handleInputChange}
-//                   className="h-12 text-lg"
-//                 />
-//                 <Textarea
-//                   id="persona"
-//                   placeholder="Describe the agent's personality..."
-//                   value={formData.persona}
-//                   onChange={handleInputChange}
-//                   rows={8}
-//                   className="min-h-[150px]"
-//                 />
+//                 <p className="text-gray-600">Describe the personality of your agent...</p>
+//                 <Input id="name" placeholder="Enter agent name" value={formData.name} onChange={handleInputChange} className="h-12 text-lg" />
+//                 <Textarea id="persona" placeholder="Describe the agent's personality..." value={formData.persona} onChange={handleInputChange} rows={8} className="min-h-[150px]" />
 //               </div>
 //             )}
 
 //             {step === 2 && (
 //               <div className="space-y-6">
-//                 <h3 className="text-xl font-semibold text-gray-800">
-//                   What do you want SmartConvo agents to accomplish for you?
-//                 </h3>
-//                 <p className="text-gray-600">
-//                   Describe the goal of the agent in a declarative manner. For example: Your goal is to determine what
-//                   requirements would need to be met for the homeowner to want to sell their home.
-//                 </p>
-//                 <Textarea
-//                   id="goals"
-//                   placeholder="Describe the agent's goals..."
-//                   value={formData.goals}
-//                   onChange={handleInputChange}
-//                   rows={8}
-//                   className="min-h-[150px]"
-//                 />
+//                 <h3 className="text-xl font-semibold text-gray-800">What do you want SmartConvo agents to accomplish for you?</h3>
+//                 <p className="text-gray-600">Describe the goal of the agent in a declarative manner...</p>
+//                 <Textarea id="goals" placeholder="Describe the agent's goals..." value={formData.goals} onChange={handleInputChange} rows={6} className="min-h-[100px]" />
+//                 <Textarea id="prompt" placeholder="Add the system prompt..." value={formData.prompt} onChange={handleInputChange} rows={6} className="min-h-[100px]" />
 //               </div>
 //             )}
 
-//             {step === 3 && (
+//             {/* step 3 remains unchanged */}
+//              {step === 3 && (
 //               <div className="space-y-6">
 //                 <h3 className="text-xl font-semibold text-gray-800">Voice Agent</h3>
 //                 <RadioGroup
@@ -1102,31 +1032,16 @@ export function AddAgentWizard({ isOpen, onClose, onAgentAdded }: AddAgentWizard
 //               </div>
 //             )}
 
-//             {/* Navigation Buttons */}
 //             <div className="flex justify-end gap-4 mt-8">
-//               {step > 1 && (
-//                 <Button variant="outline" onClick={handleBack} disabled={isLoading}>
-//                   Back
-//                 </Button>
-//               )}
-//               {step < 3 && (
-//                 <Button onClick={handleNext} disabled={isLoading}>
-//                   Next
-//                 </Button>
-//               )}
-//               {step === 3 && (
-//                 <Button onClick={handleSubmit} disabled={isLoading}>
-//                   {isLoading ? "Finishing..." : "Finish"}
-//                 </Button>
-//               )}
+//               {step > 1 && (<Button variant="outline" onClick={handleBack} disabled={isLoading}>Back</Button>)}
+//               {step < 3 && (<Button onClick={handleNext} disabled={isLoading}>Next</Button>)}
+//               {step === 3 && (<Button onClick={handleSubmit} disabled={isLoading}>{isLoading ? "Finishing..." : "Finish"}</Button>)}
 //             </div>
 //           </div>
 //         </div>
 //       </DialogContent>
 //     </Dialog>
 //   )
-
 // }
-
 
 
