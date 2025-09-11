@@ -12,8 +12,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Cookies from "js-cookie"
 import { useToast } from "@/hooks/use-toast"
 import { UploadCloud, Loader2 } from "lucide-react"
-
-
+import CustomToolsForm from "@/components/CustomToolsForm"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 
 const tabs = [
@@ -44,6 +49,7 @@ function AgentSelection({ onSelectAgent }: { onSelectAgent: (agent: any) => void
         },
       })
       const data = await response.json()
+      console.log(data)
       const enriched = Array.isArray(data)
         ? data.map((agent) => ({
             id: agent.id,
@@ -105,6 +111,213 @@ function AgentSelection({ onSelectAgent }: { onSelectAgent: (agent: any) => void
   )
 }
 
+function ToolsTab({ agentId }: { agentId: string }) {
+  const { toast } = useToast()
+  const [companyNumbers, setCompanyNumbers] = useState<string[]>([])
+  const [assignedNumbers, setAssignedNumbers] = useState<string[]>([])
+  const [originalNumbers, setOriginalNumbers] = useState<string[]>([]) 
+  const [dirty, setDirty] = useState(false)
+  const [showDialog, setShowDialog] = useState(false)
+
+  // Fetch agent + company data
+  const fetchAgentAndCompany = async () => {
+    try {
+      const agentRes = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
+        {
+          headers: {
+            Authorization: `Token ${Cookies.get("Token") || ""}`,
+          },
+        }
+      )
+      const agentData = await agentRes.json()
+
+      const companyRes = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/public/company/get-twilio-phones`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Token ${Cookies.get("Token") || ""}`,
+          },
+        }
+      )
+      const companyData = await companyRes.json()
+
+      if (Array.isArray(companyData.twilio_phone_numbers)) {
+        setCompanyNumbers(companyData.twilio_phone_numbers)
+      }
+
+      if (
+        Array.isArray(agentData.twilio_phone_numbers) &&
+        agentData.twilio_phone_numbers.length > 0
+      ) {
+        setAssignedNumbers(agentData.twilio_phone_numbers)
+        setOriginalNumbers(agentData.twilio_phone_numbers)
+      } else {
+        setAssignedNumbers([])
+        setOriginalNumbers([])
+      }
+
+      setDirty(false)
+    } catch (error) {
+      console.error("Error fetching data:", error)
+      toast({
+        description: "Error fetching Twilio data.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  useEffect(() => {
+    fetchAgentAndCompany()
+  }, [agentId])
+
+  // Toggle assignment
+  const toggleNumber = (num: string) => {
+    setAssignedNumbers((prev) => {
+      const updated = prev.includes(num)
+        ? prev.filter((n) => n !== num)
+        : [...prev, num]
+
+      setDirty(true)
+      return updated
+    })
+  }
+
+  // Save assigned numbers
+  const handleSave = async () => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Token ${Cookies.get("Token") || ""}`,
+          },
+          body: JSON.stringify({
+            twilio_phone_numbers: assignedNumbers,
+          }),
+        }
+      )
+
+      if (!res.ok) throw new Error("Failed to save assigned numbers")
+
+      toast({
+        title: "Success",
+        description: "Twilio numbers updated successfully.",
+      })
+
+      await fetchAgentAndCompany()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update numbers.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  return (
+    <div className="space-y-10">
+      <div className="text-center space-y-2">
+        <h2 className="text-3xl font-bold text-slate-900">Tools</h2>
+        <p className="text-slate-500">
+          Manage Twilio numbers and link them to your agent
+        </p>
+      </div>
+
+      {companyNumbers.length === 0 && (
+        <div className="text-center text-slate-600 italic">
+          No Twilio numbers available for this company.
+        </div>
+      )}
+
+      {companyNumbers.length > 0 && (
+        <>
+          {/* Numbers grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {companyNumbers.map((num) => {
+              const isAssigned = assignedNumbers.includes(num)
+              return (
+                <Card
+                  key={num}
+                  className={`transition-all duration-300 shadow-md hover:shadow-xl rounded-2xl ${
+                    isAssigned ? "border-green-500" : "border-slate-200"
+                  }`}
+                >
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold flex items-center justify-between">
+                      {num}
+                      {isAssigned && (
+                        <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                          Assigned
+                        </span>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-slate-600 mb-4">
+                      {isAssigned
+                        ? "This number is currently linked to the agent."
+                        : "Click below to assign this number to the agent."}
+                    </p>
+                    <Button
+                      variant={isAssigned ? "destructive" : "default"}
+                      className="w-full"
+                      onClick={() => toggleNumber(num)}
+                    >
+                      {isAssigned ? "Unassign" : "Assign"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+
+          {/* New "See Custom Tools" button */}
+          <div className="flex justify-center mt-8">
+            <Button
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-xl"
+              onClick={() => setShowDialog(true)}
+            >
+              Create Custom Tools
+            </Button>
+          </div>
+
+          {/* Custom Tools Dialog */}
+          <Dialog open={showDialog} onOpenChange={setShowDialog}>
+            <DialogContent className="max-w-4xl">
+              <DialogHeader>
+                <DialogTitle>Custom Tools</DialogTitle>
+              </DialogHeader>
+
+              {assignedNumbers.length === 0 ? (
+                <div className="text-center text-slate-600 italic">
+                  No number assigned
+                </div>
+              ) : (
+                <CustomToolsForm />
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Save button */}
+          {dirty && (
+            <div className="flex justify-end pt-6">
+              <Button
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-2 rounded-xl shadow-lg transition-transform transform hover:scale-105"
+                onClick={handleSave}
+              >
+                Save Changes
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
 
 function FAQTab({ agentId }: { agentId: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -287,168 +500,228 @@ function FAQTab({ agentId }: { agentId: string }) {
     </div>
   )
 }
-// Tools Tab (Cinematic UI)
-function ToolsTab({ agentId }: { agentId: string }) {
-  const { toast } = useToast()
-  const [twilioNumbers, setTwilioNumbers] = useState<string[]>([])
-  const [assignedNumbers, setAssignedNumbers] = useState<string[]>([])
-  const [hasTwilioPhones, setHasTwilioPhones] = useState(false)
 
-  // Fetch numbers on mount
-  useEffect(() => {
-    const checkTwilioPhones = async () => {
-      try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/public/company/get-twilio-phones`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Token ${Cookies.get("Token") || ""}`,
-          },
-        })
-        const data = await res.json()
+// // Tools Tab (Cinematic UI)
+// function ToolsTab({ agentId }: { agentId: string }) {
+//   const { toast } = useToast()
+//   const [companyNumbers, setCompanyNumbers] = useState<string[]>([])
+//   const [assignedNumbers, setAssignedNumbers] = useState<string[]>([])
+//   const [originalNumbers, setOriginalNumbers] = useState<string[]>([]) // keep track of original for dirty check
+//   const [showForm, setShowForm] = useState(false)
+//   const [dirty, setDirty] = useState(false)
 
-        if (Array.isArray(data.twilio_phone_numbers) && data.twilio_phone_numbers.length > 0) {
-          setTwilioNumbers(data.twilio_phone_numbers)
-          setHasTwilioPhones(true)
-        } else {
-          setHasTwilioPhones(false)
-          toast({ description: "No Twilio phones found. Please assign one first.", variant: "destructive" })
-        }
-      } catch (error) {
-        console.error("Error checking Twilio phones:", error)
-        toast({ description: "Error checking Twilio phones.", variant: "destructive" })
-        setHasTwilioPhones(false)
-      }
-    }
+//   // Fetch agent + company data
+//   const fetchAgentAndCompany = async () => {
+//     try {
+//       // 1) Fetch agent data first
+//       const agentRes = await fetch(
+//         `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
+//         {
+//           headers: {
+//             Authorization: `Token ${Cookies.get("Token") || ""}`,
+//           },
+//         }
+//       )
+//       const agentData = await agentRes.json()
 
-    checkTwilioPhones()
-  }, [])
+//       // 2) Fetch company numbers
+//       const companyRes = await fetch(
+//         `${process.env.NEXT_PUBLIC_BASE_URL}/public/company/get-twilio-phones`,
+//         {
+//           headers: {
+//             "Content-Type": "application/json",
+//             Authorization: `Token ${Cookies.get("Token") || ""}`,
+//           },
+//         }
+//       )
+//       const companyData = await companyRes.json()
 
-  const toggleNumber = (num: string) => {
-    setAssignedNumbers((prev) =>
-      prev.includes(num) ? prev.filter((n) => n !== num) : [...prev, num]
-    )
-  }
+//       console.log("Company Numbers API Response:", companyData)
+//       console.log("Agent API Response:", agentData)
 
-  const handleSave = async () => {
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Token ${Cookies.get("Token") || ""}`,
-        },
-        body: JSON.stringify({
-          twilio_numbers: assignedNumbers,
-        }),
-      })
+//       if (Array.isArray(companyData.twilio_phone_numbers)) {
+//         setCompanyNumbers(companyData.twilio_phone_numbers)
+//       }
 
-      if (!res.ok) throw new Error("Failed to save assigned numbers")
+//       if (
+//         Array.isArray(agentData.twilio_phone_numbers) &&
+//         agentData.twilio_phone_numbers.length > 0
+//       ) {
+//         setAssignedNumbers(agentData.twilio_phone_numbers)
+//         setOriginalNumbers(agentData.twilio_phone_numbers)
+//         setShowForm(true)
+//       } else {
+//         setAssignedNumbers([])
+//         setOriginalNumbers([])
+//         setShowForm(false)
+//       }
 
-      toast({
-        title: "Success",
-        description: "Twilio numbers assigned successfully.",
-      })
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to assign numbers.",
-        variant: "destructive",
-      })
-    }
-  }
+//       setDirty(false) // reset dirty after fetching fresh data
+//     } catch (error) {
+//       console.error("Error fetching data:", error)
+//       toast({
+//         description: "Error fetching Twilio data.",
+//         variant: "destructive",
+//       })
+//     }
+//   }
 
-  return (
-    <div className="space-y-10">
-      <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold text-slate-900">Tools</h2>
-        <p className="text-slate-500">Manage Twilio numbers and link them to your agent</p>
-      </div>
+//   useEffect(() => {
+//     fetchAgentAndCompany()
+//   }, [agentId])
 
-      {!hasTwilioPhones && (
-        <div className="text-center text-slate-600 italic">
-          No Twilio numbers available.
-        </div>
-      )}
+//   // Toggle assignment (marks dirty)
+//   const toggleNumber = (num: string) => {
+//     setAssignedNumbers((prev) => {
+//       const updated = prev.includes(num)
+//         ? prev.filter((n) => n !== num) // remove on Unassign
+//         : [...prev, num] // add on Assign
 
-      {hasTwilioPhones && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {twilioNumbers.map((num) => {
-              const isAssigned = assignedNumbers.includes(num)
-              return (
-                <Card
-                  key={num}
-                  className={`transition-all duration-300 shadow-md hover:shadow-xl rounded-2xl ${
-                    isAssigned ? "border-green-500" : "border-slate-200"
-                  }`}
-                >
-                  <CardHeader>
-                    <CardTitle className="text-lg font-semibold flex items-center justify-between">
-                      {num}
-                      {isAssigned && (
-                        <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                          Assigned
-                        </span>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-slate-600 mb-4">
-                      {isAssigned
-                        ? "This number is currently linked to the agent."
-                        : "Click below to assign this number to the agent."}
-                    </p>
-                    <Button
-                      variant={isAssigned ? "destructive" : "default"}
-                      className="w-full"
-                      onClick={() => toggleNumber(num)}
-                    >
-                      {isAssigned ? "Unassign" : "Assign"}
-                    </Button>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
+//       // mark dirty if different from original
+//       setDirty(true)
+//       return updated
+//     })
+//   }
 
-          {assignedNumbers.length > 0 && (
-            <div className="space-y-6 border border-slate-200 p-6 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100 shadow-inner">
-              <h3 className="text-2xl font-semibold text-slate-800 text-center">
-                Agent Configuration Form
-              </h3>
-              <p className="text-center text-slate-500">
-                Fill out the details below for the assigned numbers
-              </p>
+//   // Save changes (PATCH request + re-fetch agent data)
+//   const handleSave = async () => {
+//     try {
+//       const res = await fetch(
+//         `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
+//         {
+//           method: "PATCH",
+//           headers: {
+//             "Content-Type": "application/json",
+//             Authorization: `Token ${Cookies.get("Token") || ""}`,
+//           },
+//           body: JSON.stringify({
+//             twilio_phone_numbers: assignedNumbers,
+//           }),
+//         }
+//       )
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <div key={i} className="space-y-1">
-                    <label className="block text-sm text-slate-700 font-medium">
-                      Field {i + 1}
-                    </label>
-                    <Input
-                      placeholder={`Enter value for Field ${i + 1}`}
-                      className="rounded-xl border-slate-300"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+//       if (!res.ok) throw new Error("Failed to save assigned numbers")
 
-          <div className="flex justify-end pt-6">
-            <Button
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-2 rounded-xl shadow-lg transition-transform transform hover:scale-105"
-              onClick={handleSave}
-            >
-              Save Changes
-            </Button>
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
+//       toast({
+//         title: "Success",
+//         description: "Twilio numbers updated successfully.",
+//       })
+
+//       // Re-fetch to sync latest state & decide form visibility
+//       await fetchAgentAndCompany()
+//     } catch (error: any) {
+//       toast({
+//         title: "Error",
+//         description: error.message || "Failed to update numbers.",
+//         variant: "destructive",
+//       })
+//     }
+//   }
+
+//   return (
+//     <div className="space-y-10">
+//       <div className="text-center space-y-2">
+//         <h2 className="text-3xl font-bold text-slate-900">Tools</h2>
+//         <p className="text-slate-500">
+//           Manage Twilio numbers and link them to your agent
+//         </p>
+//       </div>
+
+//       {companyNumbers.length === 0 && (
+//         <div className="text-center text-slate-600 italic">
+//           No Twilio numbers available for this company.
+//         </div>
+//       )}
+
+//       {companyNumbers.length > 0 && (
+//         <>
+//           {/* Numbers grid */}
+//           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+//             {companyNumbers.map((num) => {
+//               const isAssigned = assignedNumbers.includes(num)
+//               return (
+//                 <Card
+//                   key={num}
+//                   className={`transition-all duration-300 shadow-md hover:shadow-xl rounded-2xl ${
+//                     isAssigned ? "border-green-500" : "border-slate-200"
+//                   }`}
+//                 >
+//                   <CardHeader>
+//                     <CardTitle className="text-lg font-semibold flex items-center justify-between">
+//                       {num}
+//                       {isAssigned && (
+//                         <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+//                           Assigned
+//                         </span>
+//                       )}
+//                     </CardTitle>
+//                   </CardHeader>
+//                   <CardContent>
+//                     <p className="text-slate-600 mb-4">
+//                       {isAssigned
+//                         ? "This number is currently linked to the agent."
+//                         : "Click below to assign this number to the agent."}
+//                     </p>
+//                     <Button
+//                       variant={isAssigned ? "destructive" : "default"}
+//                       className="w-full"
+//                       onClick={() => toggleNumber(num)}
+//                     >
+//                       {isAssigned ? "Unassign" : "Assign"}
+//                     </Button>
+//                   </CardContent>
+//                 </Card>
+//               )
+//             })}
+//           </div>
+
+//           {/* Show form only if agent has assigned numbers (backend decides) */}
+//           {showForm && (
+//             <div className="space-y-6 border border-slate-200 p-6 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100 shadow-inner mt-10">
+//               <h3 className="text-2xl font-semibold text-slate-800 text-center">
+//                 Agent Configuration Form
+//               </h3>
+//               <p className="text-center text-slate-500">
+//                 Fill out the details below for the assigned numbers
+//               </p>
+
+//               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                 {Array.from({ length: 10 }).map((_, i) => (
+//                   <div key={i} className="space-y-1">
+//                     <label className="block text-sm text-slate-700 font-medium">
+//                       Field {i + 1}
+//                     </label>
+//                     <Input
+//                       placeholder={`Enter value for Field ${i + 1}`}
+//                       className="rounded-xl border-slate-300"
+//                     />
+//                   </div>
+//                 ))}
+//               </div>
+//             </div>
+//           )}
+
+//           {/* Save button (always show if user made changes) */}
+//           {dirty && (
+//             <div className="flex justify-end pt-6">
+//               <Button
+//                 className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-2 rounded-xl shadow-lg transition-transform transform hover:scale-105"
+//                 onClick={handleSave}
+//               >
+//                 Save Changes
+//               </Button>
+//             </div>
+//           )}
+//         </>
+//       )}
+//     </div>
+//   )
+// }
+
+
+
+
+
 
 
 // Voiceprint Tab (keeping existing)
