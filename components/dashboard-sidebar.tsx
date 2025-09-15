@@ -22,6 +22,7 @@ import {
   ChevronRight,
   FilePlus,
   ShieldCheck,
+  Wrench, 
 } from "lucide-react"
 
 const navigationItems = [
@@ -51,6 +52,12 @@ const navigationItems = [
     title: "Users",
     href: "/dashboard/users",
     icon: UserCog,
+    companyOnly: true,
+  },
+  {
+    title: "Custom Tools",
+    href: "/dashboard/tools",
+    icon: Wrench,
     companyOnly: true,
   },
   // {
