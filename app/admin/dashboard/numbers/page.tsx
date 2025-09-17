@@ -568,7 +568,7 @@ export default function CompaniesAssignPage() {
                       setAssignDialogOpen(true)
                     }}
                   >
-                    Assign Number
+                    Add Number
                   </Button>
                 </div>
               </CardContent>
