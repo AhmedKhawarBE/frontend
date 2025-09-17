@@ -380,8 +380,10 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
-import { Trash2, Bot, Plus, Users, Activity, FileText } from "lucide-react"
+import { Trash2, Bot, Plus, Users, Activity, FileText, Settings  } from "lucide-react"
 import Cookies from "js-cookie"
+import { useRouter } from "next/navigation"
+
 
 interface Agent {
   id: number
@@ -398,6 +400,7 @@ export default function AgentsPage() {
   const [primaryDialogOpen, setPrimaryDialogOpen] = useState(false)
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null)
   const { toast } = useToast()
+  const router = useRouter()
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/`, {
@@ -733,26 +736,40 @@ export default function AgentsPage() {
                           <p className="text-sm text-slate-500">AI Assistant</p>
                         </div>
                       </div>
-                      <div className="flex flex-col items-center space-y-1 flex-shrink-0">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleMakePrimaryClick(agent.id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 text-xs px-2 py-1 h-6"
-                          title="Make Primary Agent"
-                        >
-                          Make Primary
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => handleDeleteAgent(agent.id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg h-6 w-6"
-                          title="Delete Agent"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
+                      <div className="flex flex-row items-center space-x-2 flex-shrink-0">
+  <Button
+    size="sm"
+    variant="outline"
+    onClick={() => handleMakePrimaryClick(agent.id)}
+    className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 text-xs px-2 py-1 h-6"
+    title="Make Primary Agent"
+  >
+    Make Primary
+  </Button>
+
+  {/* Settings Button */}
+  <Button
+    size="icon"
+    variant="ghost"
+    onClick={() => router.push(`/dashboard/agent-settings`)}
+    className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg h-6 w-6"
+    title="Agent Settings"
+  >
+    <Settings className="h-3 w-3" />
+  </Button>
+
+  {/* Delete Button */}
+  <Button
+    size="icon"
+    variant="ghost"
+    onClick={() => handleDeleteAgent(agent.id)}
+    className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg h-6 w-6"
+    title="Delete Agent"
+  >
+    <Trash2 className="h-3 w-3" />
+  </Button>
+</div>
+
                     </div>
                   </CardHeader>
 

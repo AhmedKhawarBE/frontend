@@ -46,7 +46,7 @@ const tabs = [
 
 // Agent Selection Component
 function AgentSelection({ onSelectAgent }: { onSelectAgent: (agent: any) => void }) {
-  const [agents, setAgents] = useState([])
+  const [agents, setAgents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
@@ -63,7 +63,6 @@ function AgentSelection({ onSelectAgent }: { onSelectAgent: (agent: any) => void
         },
       })
       const data = await response.json()
-      console.log(data)
       const enriched = Array.isArray(data)
         ? data.map((agent) => ({
             id: agent.id,
@@ -89,32 +88,43 @@ function AgentSelection({ onSelectAgent }: { onSelectAgent: (agent: any) => void
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-slate-600">Loading agents...</div>
+        <div className="text-slate-600 animate-pulse">Loading agents...</div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center space-y-4">
-        <h2 className="text-2xl font-semibold text-slate-800">Select an Agent</h2>
-        <p className="text-slate-600">Choose an agent to configure its settings</p>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <h2 className="text-3xl font-extrabold text-slate-800">Select an Agent</h2>
+        <p className="text-slate-600 text-sm">Choose an agent to configure its settings</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
+      {/* Agent Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
         {agents.map((agent: any) => (
           <Card
             key={agent.id}
-            className="cursor-pointer hover:shadow-lg transition-shadow"
             onClick={() => onSelectAgent(agent)}
+            className="group relative overflow-hidden rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer border border-slate-200 bg-white"
           >
-            <CardHeader>
-              <CardTitle className="text-lg">{agent.name}</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                {agent.name}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-slate-600 text-sm mb-4">{agent.description || "No description available"}</p>
-              <div className="flex items-center justify-between text-sm text-slate-500">
-                <span>Status: {agent.status || "Active"}</span>
+              <div className="flex items-center justify-between">
+                <span
+                  className={`text-xs font-medium px-2 py-1 rounded-lg ${
+                    agent.status === "Active"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {agent.status}
+                </span>
                 <Button size="sm">Configure</Button>
               </div>
             </CardContent>
