@@ -14,11 +14,23 @@ import { useToast } from "@/hooks/use-toast"
 import { UploadCloud, Loader2 } from "lucide-react"
 import CustomToolsForm from "@/components/CustomToolsForm"
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Slider } from "@/components/ui/slider"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { motion } from "framer-motion"
+
+type AgentConfigTabProps = { agentId: string }
 
 
 const tabs = [
@@ -27,7 +39,9 @@ const tabs = [
   { id: "agent-prompts", label: "Agent Prompts" },
   { id: "voice-settings", label: "Voice Settings" },
   { id: "tools", label: "Tools" }, 
+  { id: "agent-config", label: "Configs" }, 
   { id: "faq", label: "FAQ" },
+  { id: "additional-settings", label: "Additional Settings" },
 ]
 
 // Agent Selection Component
@@ -1151,6 +1165,179 @@ Hold on a moment.`)
   )
 }
 
+function AgentConfigTab({ agentId }: AgentConfigTabProps) {
+  const [agentConfig, setAgentConfig] = useState<any>(null)
+  const { toast } = useToast()
+
+  // Fetch agent_config
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`, {
+          headers: {
+            Authorization: `Token ${Cookies.get("Token") || ""}`,
+          },
+        })
+
+        if (!res.ok) throw new Error("Failed to fetch agent config")
+        const data = await res.json()
+
+        if (data.agent_config) setAgentConfig(data.agent_config)
+      } catch (err: any) {
+        toast({ title: "Error", description: err.message || "Failed to load agent config." })
+      }
+    }
+
+    if (agentId) fetchConfig()
+  }, [agentId])
+
+  // Update field value
+  const handleChange = (path: string[], value: any) => {
+    setAgentConfig((prev: any) => {
+      const updated = { ...prev }
+      let obj = updated
+      for (let i = 0; i < path.length - 1; i++) {
+        obj = obj[path[i]]
+      }
+      obj[path[path.length - 1]] = value
+      return updated
+    })
+  }
+
+  // Save changes
+  const handleSave = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Token ${Cookies.get("Token") || ""}`,
+        },
+        body: JSON.stringify({ agent_config: agentConfig }),
+      })
+
+      if (!res.ok) throw new Error("Failed to save agent config")
+
+      toast({ title: "Success", description: "Agent config saved successfully." })
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message })
+    }
+  }
+
+  // Render form fields with different UI based on type
+  const renderField = (path: string[], key: string, value: any) => {
+    const fullPath = [...path, key]
+
+    if (typeof value === "boolean") {
+      return (
+        <div key={fullPath.join(".")} className="flex items-center justify-between bg-slate-50 px-4 py-3 rounded-xl shadow-sm">
+          <Label className="text-slate-700 font-medium">{key}</Label>
+          <Switch
+            checked={value}
+            onCheckedChange={(val) => handleChange(fullPath, val)}
+          />
+        </div>
+      )
+    }
+
+    if (typeof value === "number") {
+      return (
+        <div key={fullPath.join(".")} className="p-4 bg-white rounded-xl shadow-sm border space-y-3">
+          <Label className="block text-slate-700 font-semibold">{key}</Label>
+          <Slider
+            value={[value]}
+            min={0}
+            max={100}
+            step={0.1}
+            onValueChange={(val) => handleChange(fullPath, val[0])}
+            className="w-full"
+          />
+          <div className="text-right text-xs text-slate-500">Current: {value}</div>
+        </div>
+      )
+    }
+
+    if (typeof value === "string" || value === null) {
+      return (
+        <div key={fullPath.join(".")} className="p-4 bg-white rounded-xl shadow-sm border space-y-2">
+          <Label className="block text-slate-700 font-semibold">{key}</Label>
+          <Input
+            value={value || ""}
+            placeholder="Enter value"
+            className="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg"
+            onChange={(e) => handleChange(fullPath, e.target.value)}
+          />
+        </div>
+      )
+    }
+
+    if (typeof value === "object" && value !== null) {
+      return (
+        <div key={fullPath.join(".")} className="p-6 bg-gradient-to-br from-slate-50 to-white border rounded-2xl shadow-md space-y-5">
+          <h4 className="text-lg font-semibold text-slate-800 tracking-tight capitalize">{key}</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {Object.entries(value).map(([subKey, subVal]) =>
+              renderField(fullPath, subKey, subVal)
+            )}
+          </div>
+        </div>
+      )
+    }
+
+    return null
+  }
+
+  return (
+  <div className="space-y-8">
+    {/* Header */}
+    <div className="text-center space-y-2">
+      <h2 className="text-2xl font-bold text-slate-800">⚙️ Manage Agent Config</h2>
+      <p className="text-slate-500 text-sm">
+        Fine-tune your agent with corporate-grade precision and aesthetics.
+      </p>
+    </div>
+
+    {!agentConfig ? (
+      <div className="flex justify-center items-center py-20">
+        <p className="text-slate-600 animate-pulse">Loading configuration...</p>
+      </div>
+    ) : (
+      <Accordion
+        type="single"
+        collapsible
+        className="w-full space-y-6"
+      >
+        {Object.entries(agentConfig).map(([key, val]) => (
+          <AccordionItem
+            key={key}
+            value={key}
+            className="border rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm bg-white/80"
+          >
+            <AccordionTrigger className="px-6 py-4 font-semibold text-slate-800 bg-gradient-to-r from-slate-100 to-slate-50 hover:from-indigo-50 hover:to-blue-50 transition-colors duration-200">
+              {key.toUpperCase()}
+            </AccordionTrigger>
+            <AccordionContent className="p-8 bg-gradient-to-br from-white via-slate-50 to-white space-y-8">
+              {renderField([], key, val)}
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+
+        <div className="flex justify-end pt-6">
+          <Button
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg text-white px-10 py-3 text-sm font-semibold rounded-xl transition-all duration-200"
+            onClick={handleSave}
+          >
+            💾 Save All Changes
+          </Button>
+        </div>
+      </Accordion>
+    )}
+  </div>
+)
+
+}
+
+
 
 // Agent Prompts Tab (keeping existing)
 function AgentPromptsTab({ agentId }: { agentId: string }) {
@@ -1169,7 +1356,7 @@ function AgentPromptsTab({ agentId }: { agentId: string }) {
         if (!res.ok) throw new Error("Failed to fetch agent prompt")
         const data = await res.json()
 
-        if (data.prompt) setAgentPrompt(data.prompt)
+        if (data.instructions) setAgentPrompt(data.instructions)
       } catch (err: any) {
         toast({ title: "Error", description: err.message || "Failed to load agent prompt." })
       }
@@ -1187,7 +1374,7 @@ function AgentPromptsTab({ agentId }: { agentId: string }) {
           Authorization: `Token ${Cookies.get("Token") || ""}`,
         },
         body: JSON.stringify({
-          prompt: agentPrompt,
+          instructions: agentPrompt,
         }),
       })
 
@@ -1457,7 +1644,7 @@ function VoiceSettingsTab({ agentId }: { agentId: string }) {
 }
 
 // Additional Settings Tab
-function AdditionalSettingsTab() {
+function AdditionalSettings() {
   const [expandedSections, setExpandedSections] = useState<string[]>([
     "location",
     "business-hours",
@@ -1846,6 +2033,163 @@ function AdditionalSettingsTab() {
   )
 }
 
+function AdditionalSettingsTab({ agentId }: { agentId: string }) {
+  const [agentName, setAgentName] = useState("")
+  const [agentPersona, setAgentPersona] = useState("")
+  const [agentGoals, setAgentGoals] = useState("")
+  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
+
+  // Fetch Agent details
+  useEffect(() => {
+    const fetchDetails = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`, {
+          headers: {
+            Authorization: `Token ${Cookies.get("Token") || ""}`,
+          },
+        })
+
+        if (!res.ok) throw new Error("Failed to fetch agent details")
+        const data = await res.json()
+
+        setAgentName(data.name || "")
+        setAgentPersona(data.persona || "")
+        setAgentGoals(data.goals || "")
+      } catch (err: any) {
+        toast({ title: "❌ Error", description: err.message || "Could not load agent settings." })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (agentId) fetchDetails()
+  }, [agentId])
+
+  // Save changes
+  const handleSave = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Token ${Cookies.get("Token") || ""}`,
+        },
+        body: JSON.stringify({
+          name: agentName,
+          persona: agentPersona,
+          goals: agentGoals,
+        }),
+      })
+
+      if (!res.ok) throw new Error("Failed to save changes")
+
+      toast({ title: "Success", description: "Agent settings updated successfully." })
+    } catch (err: any) {
+      toast({ title: "❌ Error", description: err.message })
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <p className="text-slate-600 animate-pulse">Loading agent data...</p>
+      </div>
+    )
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="max-w-3xl mx-auto p-10 rounded-3xl bg-gradient-to-br from-indigo-50 via-white to-purple-50 shadow-2xl backdrop-blur-xl border border-indigo-100 space-y-8"
+    >
+      {/* Header */}
+      <div className="text-center space-y-3">
+        <motion.h2
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="text-3xl font-extrabold text-slate-800 tracking-tight"
+        >
+          Additional Settings
+        </motion.h2>
+        <p className="text-slate-500 text-sm">
+          Fine-tune your agent’s <span className="font-semibold">identity</span>,{" "}
+          <span className="font-semibold">persona</span>, and{" "}
+          <span className="font-semibold">goals</span>.
+        </p>
+      </div>
+
+      {/* Agent Name */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="space-y-2"
+      >
+        <label className="block text-slate-700 font-semibold">Agent Name</label>
+        <Input
+          value={agentName}
+          onChange={(e) => setAgentName(e.target.value)}
+          placeholder="Enter a cinematic agent name"
+          className="rounded-xl border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50 shadow-sm"
+        />
+      </motion.div>
+
+      {/* Agent Persona */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="space-y-2"
+      >
+        <label className="block text-slate-700 font-semibold">Agent Persona</label>
+        <Textarea
+          value={agentPersona}
+          onChange={(e) => setAgentPersona(e.target.value)}
+          placeholder="Describe your agent’s persona (aesthetic, role, tone...)"
+          rows={4}
+          className="rounded-xl border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50 shadow-sm"
+        />
+      </motion.div>
+
+      {/* Agent Goals */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="space-y-2"
+      >
+        <label className="block text-slate-700 font-semibold">Agent Goals</label>
+        <Textarea
+          value={agentGoals}
+          onChange={(e) => setAgentGoals(e.target.value)}
+          placeholder="Define the strategic goals your agent should achieve"
+          rows={4}
+          className="rounded-xl border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50 shadow-sm"
+        />
+      </motion.div>
+
+      {/* Save Button */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.6 }}
+        className="flex justify-end"
+      >
+        <Button
+          onClick={handleSave}
+          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200"
+        >
+          Save Changes
+        </Button>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 export default function AgentSettingsPage() {
   const [selectedAgent, setSelectedAgent] = useState(null)
   const [activeTab, setActiveTab] = useState("voiceprint")
@@ -1873,8 +2217,12 @@ export default function AgentSettingsPage() {
         return <VoiceSettingsTab agentId={selectedAgent.id} />
       case "tools":
         return <ToolsTab agentId={selectedAgent.id} />
+      case "agent-config":
+        return <AgentConfigTab agentId={selectedAgent.id} />
       case "faq":
         return <FAQTab agentId={selectedAgent.id} />
+      case "additional-settings":
+        return <AdditionalSettingsTab agentId={selectedAgent.id} />
       default:
         return <VoiceprintTab />
     }
