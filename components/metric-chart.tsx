@@ -4,21 +4,31 @@ import { Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 
 interface MetricChartProps {
   data: number[]
+  dates?: string[]
 }
 
-export function MetricChart({ data }: MetricChartProps) {
+export function MetricChart({ data, dates }: MetricChartProps) {
   const chartData = data.map((value, index) => ({
-    name: `Day ${index + 1}`,
+    name: dates?.[index] || `Day ${index + 1}`,
     value,
   }))
 
   return (
     <ResponsiveContainer width="100%" height="100%">
       <LineChart data={chartData}>
-        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#64748b" }} />
-        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#64748b" }} />
+        <XAxis
+          dataKey="name"
+          axisLine={false}
+          tickLine={false}
+          tick={{ fontSize: 10, fill: "#64748b" }}
+        />
+        <YAxis
+          axisLine={false}
+          tickLine={false}
+          tick={{ fontSize: 10, fill: "#64748b" }}
+        />
         <Line
-          type="monotone"
+          type="linear" // sharp edges
           dataKey="value"
           stroke="#0d9488"
           strokeWidth={2}
