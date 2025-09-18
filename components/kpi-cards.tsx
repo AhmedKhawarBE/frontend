@@ -57,9 +57,7 @@
 //   )
 // }
 
-
 "use client"
-
 import { useEffect, useState } from "react"
 import Cookies from "js-cookie"
 import { Card, CardContent } from "@/components/ui/card"
@@ -85,7 +83,6 @@ interface Message {
 }
 
 export function KPICards() {
-  const [twilioNumbers, setTwilioNumbers] = useState<string[]>([])
   const [totalCalls, setTotalCalls] = useState(0)
   const [totalCallTime, setTotalCallTime] = useState(0)
   const [averageCallTime, setAverageCallTime] = useState(0)
@@ -98,31 +95,7 @@ export function KPICards() {
   const [open, setOpen] = useState(false)
   const [activeKpi, setActiveKpi] = useState<string | null>(null)
 
-  // Fetch assigned Twilio numbers
-  useEffect(() => {
-    const fetchTwilioPhones = async () => {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/public/company/get-twilio-phones`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Token ${Cookies.get("Token") || ""}`,
-            },
-          }
-        )
-        const data = await res.json()
-        if (Array.isArray(data.twilio_phone_numbers)) {
-          setTwilioNumbers(data.twilio_phone_numbers)
-        }
-      } catch (error) {
-        console.error("Error fetching Twilio numbers:", error)
-      }
-    }
-    fetchTwilioPhones()
-  }, [])
-
-  // Fetch users + agents
+  // Fetch users + agents (leave as-is)
   useEffect(() => {
     async function fetchData() {
       try {
@@ -156,7 +129,7 @@ export function KPICards() {
     fetchData()
   }, [])
 
-  // Fetch conversation data
+  // Fetch and process conversations
   useEffect(() => {
     const fetchConversations = async () => {
       try {
@@ -173,6 +146,7 @@ export function KPICards() {
         if (!res.ok) throw new Error("Failed to fetch conversations")
         const data: Message[] = await res.json()
 
+        // Group by sessionID
         const grouped = data.reduce<Record<string, Message[]>>((acc, msg) => {
           if (!acc[msg.sessionID]) acc[msg.sessionID] = []
           acc[msg.sessionID].push(msg)
@@ -187,17 +161,17 @@ export function KPICards() {
             (a, b) =>
               new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
           )
-          if (msgs.length >= 2) {
+          if (msgs.length >= 1) {
             const start = new Date(msgs[0].timestamp).getTime()
             const end = new Date(msgs[msgs.length - 1].timestamp).getTime()
             const durationSec = Math.max(0, (end - start) / 1000)
 
-            const number = msgs[0].phonenumber || "Unknown"
-            if (twilioNumbers.includes(number)) {
-              durations.push(durationSec)
-              if (!numberStats[number]) numberStats[number] = { durations: [] }
-              numberStats[number].durations.push(durationSec)
-            }
+            durations.push(durationSec)
+
+            // latest message’s phone number
+            const latestNumber = msgs[msgs.length - 1].phonenumber || "Unknown"
+            if (!numberStats[latestNumber]) numberStats[latestNumber] = { durations: [] }
+            numberStats[latestNumber].durations.push(durationSec)
           }
         }
 
@@ -227,8 +201,9 @@ export function KPICards() {
         setLoading(false)
       }
     }
-    if (twilioNumbers.length > 0) fetchConversations()
-  }, [twilioNumbers])
+
+    fetchConversations()
+  }, [])
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -336,8 +311,6 @@ export function KPICards() {
     </>
   )
 }
-
-
 
 
 // "use client"
