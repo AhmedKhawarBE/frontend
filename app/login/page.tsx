@@ -493,9 +493,9 @@ export default function LoginPage() {
               <Link href="/forgot-password" className="text-sm text-teal-600 hover:text-teal-700">
                 Forgot password?
               </Link>
-              <Link href="/admin" className="text-sm text-gray-600 hover:text-gray-700">
+              {/* <Link href="/admin" className="text-sm text-gray-600 hover:text-gray-700">
                 Admin Login
-              </Link>
+              </Link> */}
             </div>
             {!require2FA ? (
               <Button

@@ -234,7 +234,7 @@ export default function ToolsPage() {
                 </div>
               )}
 
-              <CardFooter className="flex justify-between gap-3">
+              <CardFooter className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
                   size="sm"

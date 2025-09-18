@@ -380,10 +380,9 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
-import { Trash2, Bot, Plus, Users, Activity, FileText, Settings  } from "lucide-react"
+import { Trash2, Bot, Plus, Users, Activity, FileText, Settings, Loader2 } from "lucide-react"
 import Cookies from "js-cookie"
 import { useRouter } from "next/navigation"
-
 
 interface Agent {
   id: number
@@ -395,6 +394,7 @@ interface Agent {
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([])
+  const [loading, setLoading] = useState(true) // 👈 Loading state
   const [isAddAgentWizardOpen, setIsAddAgentWizardOpen] = useState(false)
   const [expandedPersonas, setExpandedPersonas] = useState<Set<number>>(new Set())
   const [primaryDialogOpen, setPrimaryDialogOpen] = useState(false)
@@ -402,7 +402,8 @@ export default function AgentsPage() {
   const { toast } = useToast()
   const router = useRouter()
 
-  useEffect(() => {
+  const fetchAgents = () => {
+    setLoading(true) // start loading
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/`, {
       headers: {
         "Content-Type": "application/json",
@@ -429,37 +430,12 @@ export default function AgentsPage() {
           variant: "destructive",
         })
       })
+      .finally(() => setLoading(false)) // stop loading
+  }
+
+  useEffect(() => {
+    fetchAgents()
   }, [])
-
-  const fetchAgents = () => {
-  fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/`, {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Token ${Cookies.get("Token") || ""}`,
-    },
-  })
-    .then((res) => res.json())
-    .then((data) => {
-      const enriched = Array.isArray(data)
-        ? data.map((agent) => ({
-            id: agent.id,
-            name: agent.name,
-            status: agent.status === "Active" || agent.status === "active" ? "Active" : "Inactive",
-            persona: agent.persona || "Unknown",
-            primary: agent.primary || false,
-          }))
-        : []
-      setAgents(enriched)
-    })
-    .catch(() => {
-      toast({
-        title: "Error",
-        description: "Failed to fetch agents",
-        variant: "destructive",
-      })
-    })
-}
-
 
   const handleToggleAgentStatus = async (id: number) => {
     const token = Cookies.get("Token") || ""
@@ -467,17 +443,16 @@ export default function AgentsPage() {
     if (!agentToUpdate) return
 
     if (agentToUpdate.primary) {
-    toast({
-      title: "Action Not Allowed",
-      description: "You cannot deactivate the primary agent.",
-      variant: "destructive",
-    })
-    return
-  }
+      toast({
+        title: "Action Not Allowed",
+        description: "You cannot deactivate the primary agent.",
+        variant: "destructive",
+      })
+      return
+    }
 
     const newStatus = agentToUpdate.status === "Active" ? "Inactive" : "Active"
 
-    // Optimistically update the UI
     setAgents((prev) => prev.map((agent) => (agent.id === id ? { ...agent, status: newStatus } : agent)))
 
     try {
@@ -485,22 +460,21 @@ export default function AgentsPage() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Token ${Cookies.get("Token") || ""}`,
+          Authorization: `Token ${token}`,
         },
         body: JSON.stringify({ status: newStatus.toLowerCase() }),
       })
 
-      if (!res.ok) {
-        throw new Error("Failed to update agent status")
-      }
+      if (!res.ok) throw new Error("Failed to update agent status")
 
       toast({
         title: "Agent Status Updated",
         description: `Agent status changed to ${newStatus}.`,
       })
     } catch (error) {
-      // Roll back the UI change if the request fails
-      setAgents((prev) => prev.map((agent) => (agent.id === id ? { ...agent, status: agentToUpdate.status } : agent)))
+      setAgents((prev) =>
+        prev.map((agent) => (agent.id === id ? { ...agent, status: agentToUpdate.status } : agent))
+      )
       toast({
         title: "Error",
         description: "Failed to update agent status",
@@ -528,10 +502,8 @@ export default function AgentsPage() {
           description: "The agent has been successfully deleted.",
           variant: "destructive",
         })
-      } else {
-        throw new Error("Delete failed")
-      }
-    } catch (err) {
+      } else throw new Error("Delete failed")
+    } catch {
       toast({ title: "Error", description: "Failed to delete agent", variant: "destructive" })
     }
   }
@@ -542,63 +514,52 @@ export default function AgentsPage() {
   }
 
   const handleMakePrimary = async () => {
-  if (!selectedAgentId) return
+    if (!selectedAgentId) return
 
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${selectedAgentId}/`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Token ${Cookies.get("Token") || ""}`,
-      },
-      body: JSON.stringify({ primary: true }),
-    })
-
-    if (res.ok) {
-      // Update frontend state: set only this agent as primary
-      setAgents((prevAgents) =>
-        prevAgents.map((agent) =>
-          agent.id === selectedAgentId
-            ? { ...agent, primary: true }
-            : { ...agent, primary: false }
-        )
-      )
-
-      toast({
-        title: "Primary Agent Set",
-        description: "The agent has been set as primary.",
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${selectedAgentId}/`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Token ${Cookies.get("Token") || ""}`,
+        },
+        body: JSON.stringify({ primary: true }),
       })
-    } else {
-      throw new Error("Failed to set primary agent")
-    }
-  } catch (err) {
-    toast({
-      title: "Error",
-      description: "Failed to set primary agent",
-      variant: "destructive",
-    })
-  } finally {
-    setPrimaryDialogOpen(false)
-    setSelectedAgentId(null)
-  }
-}
 
+      if (res.ok) {
+        setAgents((prevAgents) =>
+          prevAgents.map((agent) =>
+            agent.id === selectedAgentId ? { ...agent, primary: true } : { ...agent, primary: false }
+          )
+        )
+
+        toast({
+          title: "Primary Agent Set",
+          description: "The agent has been set as primary.",
+        })
+      } else throw new Error("Failed to set primary agent")
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to set primary agent",
+        variant: "destructive",
+      })
+    } finally {
+      setPrimaryDialogOpen(false)
+      setSelectedAgentId(null)
+    }
+  }
 
   const togglePersonaExpansion = (agentId: number) => {
     setExpandedPersonas((prev) => {
       const newSet = new Set(prev)
-      if (newSet.has(agentId)) {
-        newSet.delete(agentId)
-      } else {
-        newSet.add(agentId)
-      }
+      newSet.has(agentId) ? newSet.delete(agentId) : newSet.add(agentId)
       return newSet
     })
   }
 
   const truncatePersona = (persona: string, maxLength = 60) => {
-    if (persona.length <= maxLength) return persona
-    return persona.substring(0, maxLength) + "..."
+    return persona.length <= maxLength ? persona : persona.substring(0, maxLength) + "..."
   }
 
   const activeAgents = agents.filter((agent) => agent.status === "Active").length
@@ -687,7 +648,13 @@ export default function AgentsPage() {
             </Badge>
           </div>
 
-          {agents.length === 0 ? (
+            {loading ? (
+            // 👇 Spinner while loading
+            <div className="flex justify-center items-center py-20">
+              <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+            </div>
+          ) : 
+          agents.length === 0 ? (
             <Card className="bg-white backdrop-blur-sm border-2 border-dashed border-slate-200 shadow-lg">
               <CardContent className="flex flex-col items-center justify-center py-16 px-6 text-center">
                 <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6">
@@ -737,38 +704,38 @@ export default function AgentsPage() {
                         </div>
                       </div>
                       <div className="flex flex-row items-center space-x-2 flex-shrink-0">
-  <Button
-    size="sm"
-    variant="outline"
-    onClick={() => handleMakePrimaryClick(agent.id)}
-    className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 text-xs px-2 py-1 h-6"
-    title="Make Primary Agent"
-  >
-    Make Primary
-  </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleMakePrimaryClick(agent.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 text-xs px-2 py-1 h-6"
+                          title="Make Primary Agent"
+                        >
+                          Make Primary
+                        </Button>
 
-  {/* Settings Button */}
-  <Button
-    size="icon"
-    variant="ghost"
-    onClick={() => router.push(`/dashboard/agent-settings`)}
-    className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg h-6 w-6"
-    title="Agent Settings"
-  >
-    <Settings className="h-3 w-3" />
-  </Button>
+                        {/* Settings Button */}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => router.push(`/dashboard/agent-settings`)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg h-6 w-6"
+                          title="Agent Settings"
+                        >
+                          <Settings className="h-3 w-3" />
+                        </Button>
 
-  {/* Delete Button */}
-  <Button
-    size="icon"
-    variant="ghost"
-    onClick={() => handleDeleteAgent(agent.id)}
-    className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg h-6 w-6"
-    title="Delete Agent"
-  >
-    <Trash2 className="h-3 w-3" />
-  </Button>
-</div>
+                        {/* Delete Button */}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDeleteAgent(agent.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg h-6 w-6"
+                          title="Delete Agent"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
 
                     </div>
                   </CardHeader>
@@ -835,7 +802,7 @@ export default function AgentsPage() {
                 </Card>
               ))}
             </div>
-          )}
+            )}
         </div>
 
         {/* Footer */}
