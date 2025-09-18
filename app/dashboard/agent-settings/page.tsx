@@ -38,7 +38,7 @@ const tabs = [
   { id: "voice-prompts", label: "Voice Prompts" },
   { id: "agent-prompts", label: "Agent Prompts" },
   { id: "voice-settings", label: "Voice Settings" },
-  { id: "tools", label: "Tools" }, 
+  { id: "tools", label: "Tools & Numbers" }, 
   { id: "agent-config", label: "Configs" }, 
   { id: "faq", label: "FAQ" },
   { id: "additional-settings", label: "Additional Settings" },
@@ -63,6 +63,7 @@ function AgentSelection({ onSelectAgent }: { onSelectAgent: (agent: any) => void
         },
       })
       const data = await response.json()
+      console.log(data)
       const enriched = Array.isArray(data)
         ? data.map((agent) => ({
             id: agent.id,
@@ -135,6 +136,8 @@ function AgentSelection({ onSelectAgent }: { onSelectAgent: (agent: any) => void
   )
 }
 
+
+
 function ToolsTab({ agentId }: { agentId: string }) {
   const { toast } = useToast()
   const [companyNumbers, setCompanyNumbers] = useState<string[]>([])
@@ -143,6 +146,7 @@ function ToolsTab({ agentId }: { agentId: string }) {
   const [dirty, setDirty] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [assignedTools, setAssignedTools] = useState<any[]>([])
+  const [usedNumbers, setUsedNumbers] = useState<string[]>([]) // <-- union of numbers
 
   // ===========================
   // Tools List Component
@@ -158,9 +162,7 @@ function ToolsTab({ agentId }: { agentId: string }) {
           const res = await fetch(
             `${process.env.NEXT_PUBLIC_BASE_URL}/custom_feature/custom-features/`,
             {
-              headers: {
-                Authorization: `Token ${Cookies.get("Token") || ""}`,
-              },
+              headers: { Authorization: `Token ${Cookies.get("Token") || ""}` },
             }
           )
           const data = await res.json()
@@ -265,7 +267,7 @@ function ToolsTab({ agentId }: { agentId: string }) {
   }
 
   // ===========================
-  // Fetch Agent + Company
+  // Fetch Agent + Company + All Agents
   // ===========================
   const fetchAgentAndCompany = async () => {
     try {
@@ -287,6 +289,22 @@ function ToolsTab({ agentId }: { agentId: string }) {
         }
       )
       const companyData = await companyRes.json()
+
+      // fetch all agents
+      const allAgentsRes = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/`,
+        {
+          headers: { Authorization: `Token ${Cookies.get("Token") || ""}` },
+        }
+      )
+      const allAgents = await allAgentsRes.json()
+
+      // build union of all twilio numbers
+      let union: string[] = []
+      if (Array.isArray(allAgents)) {
+        union = allAgents.flatMap((a) => a.twilio_phone_numbers || [])
+      }
+      setUsedNumbers(union)
 
       if (Array.isArray(companyData.twilio_phone_numbers)) {
         setCompanyNumbers(companyData.twilio_phone_numbers)
@@ -314,13 +332,46 @@ function ToolsTab({ agentId }: { agentId: string }) {
     fetchAgentAndCompany()
   }, [agentId])
 
-  const toggleNumber = (num: string) => {
-    setAssignedNumbers((prev) => {
-      const updated = prev.includes(num) ? prev.filter((n) => n !== num) : [...prev, num]
-      setDirty(true)
-      return updated
+  const toggleNumber = async (num: string, isAssignedToThisAgent: boolean) => {
+  try {
+    // Prepare updated numbers list
+    const updated = isAssignedToThisAgent
+      ? assignedNumbers.filter((n) => n !== num)
+      : [...assignedNumbers, num]
+
+    // Optimistic UI update
+    setAssignedNumbers(updated)
+
+    // Call API immediately
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Token ${Cookies.get("Token") || ""}`,
+        },
+        body: JSON.stringify({ twilio_phone_numbers: updated }),
+      }
+    )
+
+    if (!res.ok) throw new Error("Failed to update numbers")
+
+    toast({
+      title: "Success",
+      description: `Number ${isAssignedToThisAgent ? "unassigned" : "assigned"} successfully.`,
+    })
+
+    await fetchAgentAndCompany()
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description: error.message || "Failed to update numbers.",
+      variant: "destructive",
     })
   }
+}
+
 
   const handleSave = async () => {
     try {
@@ -372,37 +423,52 @@ function ToolsTab({ agentId }: { agentId: string }) {
           {/* Numbers Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {companyNumbers.map((num) => {
-              const isAssigned = assignedNumbers.includes(num)
+              const isAssignedToThisAgent = assignedNumbers.includes(num)
+              const isUsedElsewhere =
+                usedNumbers.includes(num) && !isAssignedToThisAgent
+
               return (
                 <Card
                   key={num}
                   className={`rounded-2xl p-2 backdrop-blur-md bg-white/60 dark:bg-slate-900/60 transition-all duration-500 
                   shadow-md hover:shadow-2xl hover:scale-[1.03] ${
-                    isAssigned ? "border-green-400 ring-2 ring-green-300" : "border border-slate-200"
+                    isAssignedToThisAgent
+                      ? "border-green-400 ring-2 ring-green-300"
+                      : isUsedElsewhere
+                      ? "border-red-400 ring-2 ring-red-300"
+                      : "border border-slate-200"
                   }`}
                 >
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between text-xl font-semibold">
                       <span>{num}</span>
-                      {isAssigned && (
+                      {isAssignedToThisAgent && (
                         <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
                           Assigned
+                        </span>
+                      )}
+                      {isUsedElsewhere && !isAssignedToThisAgent && (
+                        <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">
+                          Unavailable
                         </span>
                       )}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-slate-600 dark:text-slate-300 mb-4 text-sm">
-                      {isAssigned
+                      {isAssignedToThisAgent
                         ? "Currently linked to this agent."
+                        : isUsedElsewhere
+                        ? "Already assigned to another agent."
                         : "Assign this number to your agent."}
                     </p>
                     <Button
-                      variant={isAssigned ? "destructive" : "default"}
-                      className="w-full rounded-full shadow-md hover:shadow-xl transition"
-                      onClick={() => toggleNumber(num)}
+                      disabled={isUsedElsewhere}
+                      variant={isAssignedToThisAgent ? "destructive" : "default"}
+                      className="w-full rounded-full shadow-md hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => toggleNumber(num, isAssignedToThisAgent)}
                     >
-                      {isAssigned ? "Unassign" : "Assign"}
+                      {isAssignedToThisAgent ? "Unassign" : isUsedElsewhere ? "Unavailable" : "Assign"}
                     </Button>
                   </CardContent>
                 </Card>
@@ -458,6 +524,330 @@ function ToolsTab({ agentId }: { agentId: string }) {
     </div>
   )
 }
+
+// function ToolsTab({ agentId }: { agentId: string }) {
+//   const { toast } = useToast()
+//   const [companyNumbers, setCompanyNumbers] = useState<string[]>([])
+//   const [assignedNumbers, setAssignedNumbers] = useState<string[]>([])
+//   const [originalNumbers, setOriginalNumbers] = useState<string[]>([])
+//   const [dirty, setDirty] = useState(false)
+//   const [showDialog, setShowDialog] = useState(false)
+//   const [assignedTools, setAssignedTools] = useState<any[]>([])
+
+//   // ===========================
+//   // Tools List Component
+//   // ===========================
+//   function ToolsList() {
+//     const [tools, setTools] = useState<any[]>([])
+//     const [loading, setLoading] = useState(false)
+
+//     useEffect(() => {
+//       const fetchTools = async () => {
+//         try {
+//           setLoading(true)
+//           const res = await fetch(
+//             `${process.env.NEXT_PUBLIC_BASE_URL}/custom_feature/custom-features/`,
+//             {
+//               headers: {
+//                 Authorization: `Token ${Cookies.get("Token") || ""}`,
+//               },
+//             }
+//           )
+//           const data = await res.json()
+//           setTools(Array.isArray(data) ? data : [])
+//         } catch (err) {
+//           console.error("Error fetching tools:", err)
+//         } finally {
+//           setLoading(false)
+//         }
+//       }
+
+//       fetchTools()
+//     }, [])
+
+//     const toggleTool = async (tool: any, isAssigned: boolean) => {
+//       try {
+//         const updatedObjects = isAssigned
+//           ? assignedTools.filter((t) => t.id !== tool.id)
+//           : [...assignedTools, tool]
+
+//         const updatedIds = updatedObjects.map((t) => String(t.id))
+
+//         const res = await fetch(
+//           `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
+//           {
+//             method: "PATCH",
+//             headers: {
+//               "Content-Type": "application/json",
+//               Authorization: `Token ${Cookies.get("Token") || ""}`,
+//             },
+//             body: JSON.stringify({ custom_features_id: updatedIds }),
+//           }
+//         )
+
+//         const data = await res.json()
+//         if (!res.ok) throw new Error("Failed to update tools")
+
+//         setAssignedTools(data.custom_features || updatedObjects)
+
+//         toast({
+//           title: "Success",
+//           description: `Tool ${isAssigned ? "unassigned" : "assigned"} successfully.`,
+//         })
+//       } catch (error: any) {
+//         toast({
+//           title: "Error",
+//           description: error.message || "Failed to update tools.",
+//           variant: "destructive",
+//         })
+//       }
+//     }
+
+//     if (loading) {
+//       return <div className="text-center text-slate-500 italic animate-pulse">Loading tools...</div>
+//     }
+
+//     if (tools.length === 0) {
+//       return <div className="text-center text-slate-500 italic">No tools available</div>
+//     }
+
+//     return (
+//       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+//         {tools.map((tool) => {
+//           const isAssigned = assignedTools.some((t) => t.id === tool.id)
+//           return (
+//             <Card
+//               key={tool.id}
+//               className={`relative rounded-2xl backdrop-blur-md bg-white/60 dark:bg-slate-900/60 border 
+//               transition-all duration-500 shadow-lg hover:shadow-2xl hover:scale-[1.03] ${
+//                 isAssigned ? "border-indigo-500 ring-2 ring-indigo-300" : "border-slate-200"
+//               }`}
+//             >
+//               <CardHeader>
+//                 <CardTitle className="flex items-center justify-between text-lg font-semibold">
+//                   <span className="bg-gradient-to-r from-indigo-600 to-blue-500 bg-clip-text text-transparent">
+//                     {tool.name}
+//                   </span>
+//                   {isAssigned && (
+//                     <span className="ml-2 text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
+//                       Assigned
+//                     </span>
+//                   )}
+//                 </CardTitle>
+//               </CardHeader>
+//               <CardContent className="space-y-4">
+//                 <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
+//                   {tool.description || "No description"}
+//                 </p>
+//                 <Button
+//                   variant={isAssigned ? "destructive" : "default"}
+//                   className="w-full rounded-full py-2 shadow-md hover:shadow-xl transition"
+//                   onClick={() => toggleTool(tool, isAssigned)}
+//                 >
+//                   {isAssigned ? "Unassign" : "Assign"}
+//                 </Button>
+//               </CardContent>
+//             </Card>
+//           )
+//         })}
+//       </div>
+//     )
+//   }
+
+//   // ===========================
+//   // Fetch Agent + Company
+//   // ===========================
+//   const fetchAgentAndCompany = async () => {
+//     try {
+//       const agentRes = await fetch(
+//         `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
+//         {
+//           headers: { Authorization: `Token ${Cookies.get("Token") || ""}` },
+//         }
+//       )
+//       const agentData = await agentRes.json()
+
+//       const companyRes = await fetch(
+//         `${process.env.NEXT_PUBLIC_BASE_URL}/public/company/get-twilio-phones`,
+//         {
+//           headers: {
+//             "Content-Type": "application/json",
+//             Authorization: `Token ${Cookies.get("Token") || ""}`,
+//           },
+//         }
+//       )
+//       const companyData = await companyRes.json()
+
+//       if (Array.isArray(companyData.twilio_phone_numbers)) {
+//         setCompanyNumbers(companyData.twilio_phone_numbers)
+//       }
+
+//       if (Array.isArray(agentData.twilio_phone_numbers)) {
+//         setAssignedNumbers(agentData.twilio_phone_numbers || [])
+//         setOriginalNumbers(agentData.twilio_phone_numbers || [])
+//       }
+
+//       if (Array.isArray(agentData.custom_features)) {
+//         setAssignedTools(agentData.custom_features)
+//       }
+
+//       setDirty(false)
+//     } catch {
+//       toast({
+//         description: "Error fetching Twilio/Tools data.",
+//         variant: "destructive",
+//       })
+//     }
+//   }
+
+//   useEffect(() => {
+//     fetchAgentAndCompany()
+//   }, [agentId])
+
+//   const toggleNumber = (num: string) => {
+//     setAssignedNumbers((prev) => {
+//       const updated = prev.includes(num) ? prev.filter((n) => n !== num) : [...prev, num]
+//       setDirty(true)
+//       return updated
+//     })
+//   }
+
+//   const handleSave = async () => {
+//     try {
+//       const res = await fetch(
+//         `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
+//         {
+//           method: "PATCH",
+//           headers: {
+//             "Content-Type": "application/json",
+//             Authorization: `Token ${Cookies.get("Token") || ""}`,
+//           },
+//           body: JSON.stringify({ twilio_phone_numbers: assignedNumbers }),
+//         }
+//       )
+
+//       if (!res.ok) throw new Error("Failed to save assigned numbers")
+
+//       toast({
+//         title: "Success",
+//         description: "Twilio numbers updated successfully.",
+//       })
+//       await fetchAgentAndCompany()
+//     } catch (error: any) {
+//       toast({
+//         title: "Error",
+//         description: error.message || "Failed to update numbers.",
+//         variant: "destructive",
+//       })
+//     }
+//   }
+
+//   // ===========================
+//   // Render
+//   // ===========================
+//   return (
+//     <div className="space-y-12">
+//       {/* Hero Header */}
+//       <div className="text-center space-y-3">
+//         <h2 className="text-4xl font-extrabold bg-gradient-to-r from-indigo-600 to-blue-500 bg-clip-text text-transparent">
+//           Agent Tools & Numbers
+//         </h2>
+//         <p className="text-slate-500 text-lg">
+//           Seamlessly manage Twilio numbers & custom tools for your agent
+//         </p>
+//       </div>
+
+//       {companyNumbers.length > 0 ? (
+//         <>
+//           {/* Numbers Section */}
+//           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+//             {companyNumbers.map((num) => {
+//               const isAssigned = assignedNumbers.includes(num)
+//               return (
+//                 <Card
+//                   key={num}
+//                   className={`rounded-2xl p-2 backdrop-blur-md bg-white/60 dark:bg-slate-900/60 transition-all duration-500 
+//                   shadow-md hover:shadow-2xl hover:scale-[1.03] ${
+//                     isAssigned ? "border-green-400 ring-2 ring-green-300" : "border border-slate-200"
+//                   }`}
+//                 >
+//                   <CardHeader>
+//                     <CardTitle className="flex items-center justify-between text-xl font-semibold">
+//                       <span>{num}</span>
+//                       {isAssigned && (
+//                         <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+//                           Assigned
+//                         </span>
+//                       )}
+//                     </CardTitle>
+//                   </CardHeader>
+//                   <CardContent>
+//                     <p className="text-slate-600 dark:text-slate-300 mb-4 text-sm">
+//                       {isAssigned
+//                         ? "Currently linked to this agent."
+//                         : "Assign this number to your agent."}
+//                     </p>
+//                     <Button
+//                       variant={isAssigned ? "destructive" : "default"}
+//                       className="w-full rounded-full shadow-md hover:shadow-xl transition"
+//                       onClick={() => toggleNumber(num)}
+//                     >
+//                       {isAssigned ? "Unassign" : "Assign"}
+//                     </Button>
+//                   </CardContent>
+//                 </Card>
+//               )
+//             })}
+//           </div>
+
+//           {/* Tools Modal */}
+//           <div className="flex justify-center mt-10">
+//             <Button
+//               className="bg-gradient-to-r from-indigo-600 to-blue-500 text-white px-8 py-3 rounded-full shadow-lg hover:scale-105 transition"
+//               onClick={() => setShowDialog(true)}
+//             >
+//               Manage Custom Tools
+//             </Button>
+//           </div>
+
+//           <Dialog open={showDialog} onOpenChange={setShowDialog}>
+//             <DialogContent className="max-w-5xl rounded-3xl backdrop-blur-md bg-white/80 dark:bg-slate-900/80 shadow-2xl">
+//               <DialogHeader className="text-center">
+//                 <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-500 bg-clip-text text-transparent">
+//                   Custom Tools
+//                 </DialogTitle>
+//               </DialogHeader>
+
+//               {assignedNumbers.length === 0 ? (
+//                 <div className="text-center text-slate-500 italic">
+//                   No number assigned → tools hidden
+//                 </div>
+//               ) : (
+//                 <ToolsList />
+//               )}
+//             </DialogContent>
+//           </Dialog>
+
+//           {/* Save Button */}
+//           {dirty && (
+//             <div className="flex justify-end pt-10">
+//               <Button
+//                 className="bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-700 text-white px-10 py-3 rounded-full shadow-lg transition-transform transform hover:scale-105"
+//                 onClick={handleSave}
+//               >
+//                 Save Changes
+//               </Button>
+//             </div>
+//           )}
+//         </>
+//       ) : (
+//         <div className="text-center text-slate-500 italic">
+//           No Twilio numbers available for this company.
+//         </div>
+//       )}
+//     </div>
+//   )
+// }
 
 function FAQTab({ agentId }: { agentId: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
