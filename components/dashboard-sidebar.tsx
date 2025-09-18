@@ -92,12 +92,12 @@ const navigationItems = [
   //   href: "/dashboard/upload-documents",
   //   icon: FilePlus,
   // },
-  {
-    title: "Content",
-    href: "/dashboard/content",
-    icon: FileText,
-    companyOnly: true,
-  },
+  // {
+  //   title: "Content",
+  //   href: "/dashboard/content",
+  //   icon: FileText,
+  //   companyOnly: true,
+  // },
   {
     title: "Account Setting",
     icon: User,
