@@ -147,6 +147,9 @@ function ToolsTab({ agentId }: { agentId: string }) {
   const [showDialog, setShowDialog] = useState(false)
   const [assignedTools, setAssignedTools] = useState<any[]>([])
   const [usedNumbers, setUsedNumbers] = useState<string[]>([]) // <-- union of numbers
+  const [loadingNumbers, setLoadingNumbers] = useState(false)
+  const [loadingAssignments, setLoadingAssignments] = useState<{ [key: string]: boolean }>({})
+
 
   // ===========================
   // Tools List Component
@@ -270,69 +273,74 @@ function ToolsTab({ agentId }: { agentId: string }) {
   // Fetch Agent + Company + All Agents
   // ===========================
   const fetchAgentAndCompany = async () => {
-    try {
-      const agentRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
-        {
-          headers: { Authorization: `Token ${Cookies.get("Token") || ""}` },
-        }
-      )
-      const agentData = await agentRes.json()
+  try {
+    setLoadingNumbers(true) // start loader
 
-      const companyRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/public/company/get-twilio-phones`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Token ${Cookies.get("Token") || ""}`,
-          },
-        }
-      )
-      const companyData = await companyRes.json()
-
-      // fetch all agents
-      const allAgentsRes = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/`,
-        {
-          headers: { Authorization: `Token ${Cookies.get("Token") || ""}` },
-        }
-      )
-      const allAgents = await allAgentsRes.json()
-
-      // build union of all twilio numbers
-      let union: string[] = []
-      if (Array.isArray(allAgents)) {
-        union = allAgents.flatMap((a) => a.twilio_phone_numbers || [])
+    const agentRes = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
+      {
+        headers: { Authorization: `Token ${Cookies.get("Token") || ""}` },
       }
-      setUsedNumbers(union)
+    )
+    const agentData = await agentRes.json()
 
-      if (Array.isArray(companyData.twilio_phone_numbers)) {
-        setCompanyNumbers(companyData.twilio_phone_numbers)
+    const companyRes = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/public/company/get-twilio-phones`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Token ${Cookies.get("Token") || ""}`,
+        },
       }
+    )
+    const companyData = await companyRes.json()
 
-      if (Array.isArray(agentData.twilio_phone_numbers)) {
-        setAssignedNumbers(agentData.twilio_phone_numbers || [])
-        setOriginalNumbers(agentData.twilio_phone_numbers || [])
+    const allAgentsRes = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/`,
+      {
+        headers: { Authorization: `Token ${Cookies.get("Token") || ""}` },
       }
+    )
+    const allAgents = await allAgentsRes.json()
 
-      if (Array.isArray(agentData.custom_features)) {
-        setAssignedTools(agentData.custom_features)
-      }
-
-      setDirty(false)
-    } catch {
-      toast({
-        description: "Error fetching Twilio/Tools data.",
-        variant: "destructive",
-      })
+    // build union of all twilio numbers
+    let union: string[] = []
+    if (Array.isArray(allAgents)) {
+      union = allAgents.flatMap((a) => a.twilio_phone_numbers || [])
     }
+    setUsedNumbers(union)
+
+    if (Array.isArray(companyData.twilio_phone_numbers)) {
+      setCompanyNumbers(companyData.twilio_phone_numbers)
+    }
+
+    if (Array.isArray(agentData.twilio_phone_numbers)) {
+      setAssignedNumbers(agentData.twilio_phone_numbers || [])
+      setOriginalNumbers(agentData.twilio_phone_numbers || [])
+    }
+
+    if (Array.isArray(agentData.custom_features)) {
+      setAssignedTools(agentData.custom_features)
+    }
+
+    setDirty(false)
+  } catch {
+    toast({
+      description: "Error fetching Twilio/Tools data.",
+      variant: "destructive",
+    })
+  } finally {
+    setLoadingNumbers(false) // stop loader
   }
+}
 
   useEffect(() => {
     fetchAgentAndCompany()
   }, [agentId])
 
   const toggleNumber = async (num: string, isAssignedToThisAgent: boolean) => {
+  setLoadingAssignments((prev) => ({ ...prev, [num]: true }))
+
   try {
     // Prepare updated numbers list
     const updated = isAssignedToThisAgent
@@ -342,7 +350,6 @@ function ToolsTab({ agentId }: { agentId: string }) {
     // Optimistic UI update
     setAssignedNumbers(updated)
 
-    // Call API immediately
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
       {
@@ -369,8 +376,11 @@ function ToolsTab({ agentId }: { agentId: string }) {
       description: error.message || "Failed to update numbers.",
       variant: "destructive",
     })
+  } finally {
+    setLoadingAssignments((prev) => ({ ...prev, [num]: false }))
   }
 }
+
 
 
   const handleSave = async () => {
@@ -418,7 +428,11 @@ function ToolsTab({ agentId }: { agentId: string }) {
         </p>
       </div>
 
-      {companyNumbers.length > 0 ? (
+            {loadingNumbers ? (
+        <div className="flex justify-center items-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-yellow-400 border-t-transparent"></div>
+        </div>
+      ) : companyNumbers.length > 0 ? (
         <>
           {/* Numbers Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -463,12 +477,22 @@ function ToolsTab({ agentId }: { agentId: string }) {
                         : "Assign this number to your agent."}
                     </p>
                     <Button
-                      disabled={isUsedElsewhere}
+                      disabled={isUsedElsewhere || loadingAssignments[num]}
                       variant={isAssignedToThisAgent ? "destructive" : "default"}
                       className="w-full rounded-full shadow-md hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={() => toggleNumber(num, isAssignedToThisAgent)}
                     >
-                      {isAssignedToThisAgent ? "Unassign" : isUsedElsewhere ? "Unavailable" : "Assign"}
+                      {loadingAssignments[num] ? (
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        </div>
+                      ) : isAssignedToThisAgent ? (
+                        "Unassign"
+                      ) : isUsedElsewhere ? (
+                        "Unavailable"
+                      ) : (
+                        "Assign"
+                      )}
                     </Button>
                   </CardContent>
                 </Card>
