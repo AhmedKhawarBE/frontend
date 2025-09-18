@@ -1502,7 +1502,7 @@ Hold on a moment.`)
         </div>
 
         {/* Processing Phrases */}
-        <div className="bg-white border border-slate-200 rounded-lg">
+        {/* <div className="bg-white border border-slate-200 rounded-lg">
           <div className="p-4 border-b border-slate-200 flex items-center justify-between">
             <div>
               <h3 className="font-medium text-slate-800">Processing Phrases</h3>
@@ -1527,10 +1527,10 @@ Hold on a moment.`)
             />
             <Button variant="outline" onClick={handleReset}>Reset to default</Button>
           </div>
-        </div>
+        </div> */}
 
         {/* Voicemail Phrase */}
-        <div className="bg-white border border-slate-200 rounded-lg">
+        {/* <div className="bg-white border border-slate-200 rounded-lg">
           <div className="p-4 border-b border-slate-200 flex items-center justify-between">
             <div>
               <h3 className="font-medium text-slate-800">Voicemail Phrase</h3>
@@ -1553,7 +1553,7 @@ Hold on a moment.`)
               className="min-h-[100px]"
             />
           </div>
-        </div>
+        </div> */}
 
         {/* Extended Silence Phrase */}
         <div className="bg-white border border-slate-200 rounded-lg">
