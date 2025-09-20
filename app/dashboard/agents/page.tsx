@@ -412,6 +412,7 @@ export default function AgentsPage() {
     })
       .then((res) => res.json())
       .then((data) => {
+        console.log(data)
         const enriched = Array.isArray(data)
           ? data.map((agent) => ({
               id: agent.id,
