@@ -897,11 +897,40 @@ const extractPlaceholdersFromString = (str: string): string[] => {
     });
   };
 
+  
+
     scan(formData.query_template)
     scan(formData.body_template)
 
+    // 🔥 Scan URL for {placeholders}
+    
+    const urlMatches = formData.url.match(/\{[a-zA-Z0-9_]+\}/g);
+    
+    if (urlMatches) {
+      urlMatches.forEach((m) => found.push(m.slice(1, -1))); // strip braces
+    }
+    // alert(urlMatches)
+    // alert(JSON.stringify(found))
     return Array.from(new Set(found)) // unique only
-  }, [formData.query_template, formData.body_template])
+  }, [formData.url, formData.query_template, formData.body_template])
+
+  // Sync extracted params into formData.parameters
+useEffect(() => {
+  if (extractedParams.length > 0) {
+    setFormData((prev: any) => ({
+      ...prev,
+      parameters: {
+        ...prev.parameters,
+        ...Object.fromEntries(
+          extractedParams.map((p) => [
+            p,
+            prev.parameters[p] || { type: "", description: "", required: false },
+          ])
+        ),
+      },
+    }));
+  }
+}, [extractedParams]);
 
 const initialFormData = {
   name: "",
