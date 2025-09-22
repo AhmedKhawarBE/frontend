@@ -4,12 +4,13 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Home, Building2, LogOut, Menu, X, Bell, User, CreditCard, ChevronDown, ChevronUp, Phone } from "lucide-react"
+import { Home, Building2, LogOut, Menu, X, Bell, User, CreditCard, ChevronDown, ChevronUp, Phone, Bot } from "lucide-react"
 
 const sidebarItems = [
   { name: "Dashboard", href: "/admin/dashboard", icon: Home },
   { name: "Companies", href: "/admin/dashboard/companies", icon: Building2 },
   { name: "Manage Numbers", href: "/admin/dashboard/numbers", icon: Phone },
+  { name: "Agent Configuration", href: "/admin/dashboard/agent-settings", icon: Bot },
   {
     name: "Billing",
     icon: CreditCard,

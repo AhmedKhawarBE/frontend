@@ -28,6 +28,7 @@ import {
   ChevronUp,
 } from "lucide-react"
 import CustomToolsForm from "@/components/CustomToolsForm"
+import { Clipboard } from "lucide-react"
 
 function jsonPretty(obj: any) {
   return JSON.stringify(obj, null, 2)
@@ -280,21 +281,43 @@ export default function ToolsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* View Dialog */}
-    <Dialog open={!!viewTool} onOpenChange={() => setViewTool(null)}>
-    <DialogContent className="max-w-3xl">
-        <DialogHeader>
-        <DialogTitle>Tool Preview: {viewTool?.name}</DialogTitle>
-        </DialogHeader>
-        {viewTool && (
-        <div className="max-h-[70vh] overflow-y-auto">
-            <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg text-sm overflow-x-auto">
-            {jsonPretty(viewTool)}
-            </pre>
-        </div>
-        )}
-    </DialogContent>
-    </Dialog>
+      
+
+{/* View Dialog */}
+<Dialog open={!!viewTool} onOpenChange={() => setViewTool(null)}>
+  <DialogContent className="max-w-3xl">
+    <DialogHeader>
+      <DialogTitle>Tool Preview: {viewTool?.name}</DialogTitle>
+    </DialogHeader>
+
+    {viewTool && (
+      <div className="relative max-h-[70vh] overflow-y-auto">
+        {/* Copy Button (GitHub style, icon-only) */}
+        <Button
+          size="icon"
+          variant="ghost"
+          className="absolute top-2 right-2 z-10 rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700"
+          onClick={() => {
+            navigator.clipboard.writeText(jsonPretty(viewTool))
+            toast({
+              title: "Copied",
+              description: "Tool JSON copied to clipboard.",
+            })
+          }}
+        >
+          <Clipboard className="h-4 w-4" />
+        </Button>
+
+        {/* Code Block */}
+        <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg text-sm overflow-x-auto">
+          {jsonPretty(viewTool)}
+        </pre>
+      </div>
+    )}
+  </DialogContent>
+</Dialog>
+
+
 
     </div>
   )
