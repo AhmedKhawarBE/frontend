@@ -24,6 +24,27 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 
+// shadcn searchable dropdown
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command"
+
+// Separate model groups
+const AVAILABLE_MODELS = {
+  llm: ["gpt-4", "gpt-3.5-turbo", "claude-3", "llama-2-70b", "mistral-7b"],
+  stt: ["whisper-1", "deepgram-stt"],
+  tts: ["coqui-tts"],
+}
+
 export default function CompanyAgentsPage() {
   const [agents, setAgents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -99,7 +120,6 @@ export default function CompanyAgentsPage() {
   const handleSave = async () => {
     const token = Cookies.get("adminToken")
     if (!selectedAgentId) return
-    console.log(agentConfig, selectedAgentId)
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${selectedAgentId}/`,
@@ -127,6 +147,42 @@ export default function CompanyAgentsPage() {
   // Render dynamic form fields
   const renderField = (path: string[], key: string, value: any) => {
     const fullPath = [...path, key]
+
+    // Handle model dropdown for llm, stt, tts
+    if (key === "model" && ["llm", "stt", "tts"].includes(path[0])) {
+      const category = path[0] as "llm" | "stt" | "tts"
+      return (
+        <div
+          key={fullPath.join(".")}
+          className="p-4 bg-white rounded-xl shadow-sm border space-y-2"
+        >
+          <Label className="block text-slate-700 font-semibold">{key}</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full justify-between">
+                {value || "Select a model"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[300px] p-0">
+              <Command>
+                <CommandInput placeholder="Search models..." />
+                <CommandEmpty>No model found.</CommandEmpty>
+                <CommandGroup>
+                  {AVAILABLE_MODELS[category].map((m) => (
+                    <CommandItem
+                      key={m}
+                      onSelect={() => handleChange(fullPath, m)}
+                    >
+                      {m}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )
+    }
 
     if (typeof value === "boolean") {
       return (
@@ -183,6 +239,13 @@ export default function CompanyAgentsPage() {
     }
 
     if (typeof value === "object" && value !== null) {
+      // Reorder: provider first if exists
+      const entries = Object.entries(value)
+      const reordered = [
+        ...entries.filter(([subKey]) => subKey === "provider"),
+        ...entries.filter(([subKey]) => subKey !== "provider"),
+      ]
+
       return (
         <div
           key={fullPath.join(".")}
@@ -192,13 +255,14 @@ export default function CompanyAgentsPage() {
             {key}
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {Object.entries(value).map(([subKey, subVal]) =>
+            {reordered.map(([subKey, subVal]) =>
               renderField(fullPath, subKey, subVal)
             )}
           </div>
         </div>
       )
     }
+
 
     return null
   }
