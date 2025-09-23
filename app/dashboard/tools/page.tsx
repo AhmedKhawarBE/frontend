@@ -62,6 +62,7 @@ export default function ToolsPage() {
   const [loading, setLoading] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [methodFilter, setMethodFilter] = useState<string>("ALL")
 
   // Fetch tools
   useEffect(() => {
@@ -175,6 +176,26 @@ export default function ToolsPage() {
         </Button>
       </div>
 
+      {/* Filter Row */}
+      <div className="flex flex-wrap gap-2 justify-center mb-6">
+        {["ALL", "GET", "POST", "PUT", "PATCH", "DELETE"].map((m) => (
+          <Button
+            key={m}
+            variant={methodFilter === m ? "default" : "outline"}
+            size="sm"
+            className={
+              methodFilter === m
+                ? "bg-black text-white hover:bg-gray-800"
+                : "bg-white text-gray-700 border hover:bg-gray-100"
+            }
+            onClick={() => setMethodFilter(m)}
+          >
+            {m}
+          </Button>
+        ))}
+      </div>
+
+
       {/* Tools Grid */}
       {loading ? (
         <div className="flex justify-center py-20">
@@ -186,7 +207,11 @@ export default function ToolsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
-          {tools.map((tool) => (
+          {tools
+            .filter((tool) =>
+              methodFilter === "ALL" ? true : tool.method?.toUpperCase() === methodFilter
+            )
+            .map((tool) => (
             <Card
               key={tool.id}
               className="rounded-2xl shadow-md hover:shadow-xl transition-all border border-slate-200"

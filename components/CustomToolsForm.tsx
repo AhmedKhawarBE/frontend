@@ -752,6 +752,21 @@ export default function CustomToolsForm({
   const token = Cookies.get("Token") || ""
   const [step, setStep] = useState<Step>(1)
 
+  // Define step labels once
+const stepLabels: Record<Step, string> = {
+  1: "Basic Info",
+  2: "Request Setup",
+  3: "Headers",
+  4: "Query Params",
+  5: "Body",
+  6: "Parameters",
+  7: "Misc",
+}
+
+const totalSteps = Object.keys(stepLabels).length
+
+
+
   // Main form state
   const [formData, setFormData] = useState<any>({
     name: "",
@@ -1043,13 +1058,87 @@ const res = await fetch(url, {
         <p className="text-center text-slate-500 mt-1">
           Step {step} of 7
         </p>
-        <Progress
-          value={(step / 7) * 100}
-          className="h-2 mt-3 rounded-full bg-slate-200"
-        />
+        {/* Progress Stepper */}
+{/* Progress Stepper (replace old <Progress /> with this) */}
+<div className="relative w-full mt-3">
+  {/* base line (behind, full length) */}
+  <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 bg-slate-200 rounded-full z-0" />
+
+  {/* filled line (stops at current step center) */}
+  <div
+    className="absolute left-0 top-1/2 h-1 -translate-y-1/2 bg-black rounded-full z-0 transition-all duration-300"
+    style={{
+      width: `${((step - 1) / (totalSteps - 1)) * 100}%`,
+    }}
+  />
+
+  {/* circles row */}
+  <div className="relative flex justify-between items-center h-12 z-10">
+    {Object.entries(stepLabels).map(([num, label]) => {
+      const stepNum = Number(num) as Step
+      const isCurrent = stepNum === step
+      const isCompleted = stepNum < step
+
+      return (
+        <div key={num} className="group relative flex flex-col items-center">
+          {/* circle */}
+          <button
+            type="button"
+            onClick={() => setStep(stepNum)}
+            disabled={isCurrent}
+            className={`w-9 h-9 rounded-full border flex items-center justify-center text-sm font-medium transform transition-transform
+              ${
+                isCurrent
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : isCompleted
+                  ? "bg-black text-white border-black"
+                  : "bg-white text-gray-600 border-gray-300"
+              }
+              group-hover:scale-110
+            `}
+            aria-current={isCurrent ? "true" : "false"}
+          >
+            {num}
+          </button>
+
+          {/* tooltip above circle (shows on hover) */}
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150">
+            <div className="bg-black text-white text-xs rounded px-2 py-1 whitespace-nowrap shadow">
+              Step {num}: {label}
+            </div>
+          </div>
+        </div>
+      )
+    })}
+  </div>
+</div>
+
+
       </CardHeader>
 
       <CardContent>
+        {/* Step Navigation */}
+{/* <div className="flex flex-wrap justify-center gap-2 mb-6">
+  {Object.entries(stepLabels).map(([num, label]) => {
+    const stepNum = Number(num) as Step
+    const isCurrent = stepNum === step
+    return (
+      <button
+        key={num}
+        onClick={() => !isCurrent && setStep(stepNum)}
+        disabled={isCurrent}
+        className={`px-3 py-1 rounded-md border text-sm transition
+          ${isCurrent 
+            ? "bg-black text-white border-black cursor-not-allowed"
+            : "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200 hover:text-black"
+          }`}
+      >
+        {label}
+      </button>
+    )
+  })}
+</div> */}
+
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
@@ -1363,38 +1452,136 @@ const res = await fetch(url, {
                     )}
 
                     {/* Step 6: Parameters (auto-detected) */}
-                    {step === 6 && (
-                    <div className="space-y-4">
-                        <h3 className="font-semibold text-lg">Parameters</h3>
-                        {Object.keys(formData.parameters).length === 0 && (
-                        <p className="italic text-slate-500">No parameters detected in templates.</p>
-                        )}
-                        {Object.keys(formData.parameters).map((paramKey) => (
-                        <div key={paramKey} className="border p-3 rounded-xl bg-white shadow-sm">
-                            <h4 className="font-semibold">{paramKey}</h4>
-                            <Input
-                            placeholder="Type (e.g. string, number)"
-                            value={formData.parameters[paramKey]?.type || ""}
-                            onChange={(e) => handleParameterConfig(paramKey, "type", e.target.value)}
-                            className="mt-2"
-                            />
-                            <Input
-                            placeholder="Description"
-                            value={formData.parameters[paramKey]?.description || ""}
-                            onChange={(e) => handleParameterConfig(paramKey, "description", e.target.value)}
-                            className="mt-2"
-                            />
-                            <div className="flex items-center gap-2 mt-2">
-                            <Checkbox
-                                checked={formData.parameters[paramKey]?.required || false}
-                                onCheckedChange={(checked) => handleParameterConfig(paramKey, "required", !!checked)}
-                            />
-                            <span>Required</span>
-                            </div>
-                        </div>
-                        ))}
-                    </div>
-                    )}
+                    {/* Step 6 */}
+{step === 6 && (
+  <div className="space-y-4">
+    <h3 className="font-semibold text-lg">Parameters</h3>
+
+    {/* Existing Parameters */}
+    {Object.keys(formData.parameters || {}).map((paramKey) => (
+      <div
+        key={paramKey}
+        className="border rounded-lg p-4 bg-slate-50 flex flex-col space-y-3"
+      >
+        {/* Header row: Parameter name + Remove button */}
+        <div className="flex items-center justify-between">
+          <input
+            type="text"
+            value={paramKey}
+            onChange={(e) => {
+              const newKey = e.target.value
+              const updated = { ...formData.parameters }
+              updated[newKey] = updated[paramKey]
+              delete updated[paramKey]
+              setFormData((prev) => ({ ...prev, parameters: updated }))
+            }}
+            className="flex-1 rounded border px-3 py-2"
+            placeholder="Parameter name"
+          />
+
+          <button
+            onClick={() => {
+              const updated = { ...formData.parameters }
+              delete updated[paramKey]
+              setFormData((prev) => ({ ...prev, parameters: updated }))
+            }}
+            className="ml-3 text-red-500 hover:text-red-700 text-sm"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Type Dropdown (with array handling) */}
+        <select
+          className="w-full rounded-lg border px-3 py-2"
+          value={formData.parameters[paramKey]?.type || ""}
+          onChange={(e) => {
+            const newType = e.target.value
+            handleParameterConfig(paramKey, "type", newType)
+            if (newType === "array") {
+              handleParameterConfig(paramKey, "items", { type: "" })
+            } else {
+              handleParameterConfig(paramKey, "items", undefined)
+            }
+          }}
+        >
+          <option value="">-- Select Type --</option>
+          <option value="string">string</option>
+          <option value="integer">integer</option>
+          <option value="float">float</option>
+          <option value="double">double</option>
+          <option value="boolean">boolean</option>
+          <option value="char">char</option>
+          <option value="array">array</option>
+          <option value="object">object</option>
+        </select>
+
+        {/* If array → show items dropdown */}
+        {formData.parameters[paramKey]?.type === "array" && (
+          <select
+            className="w-full rounded-lg border px-3 py-2"
+            value={formData.parameters[paramKey]?.items?.type || ""}
+            onChange={(e) =>
+              handleParameterConfig(paramKey, "items", { type: e.target.value })
+            }
+          >
+            <option value="">-- Select Item Type --</option>
+            <option value="string">string</option>
+            <option value="integer">integer</option>
+            <option value="float">float</option>
+            <option value="double">double</option>
+            <option value="boolean">boolean</option>
+            <option value="char">char</option>
+          </select>
+        )}
+
+        {/* Required checkbox */}
+        <label className="flex items-center space-x-2 text-sm">
+          <input
+            type="checkbox"
+            checked={formData.parameters[paramKey]?.required || false}
+            onChange={(e) =>
+              handleParameterConfig(paramKey, "required", e.target.checked)
+            }
+          />
+          <span>Required</span>
+        </label>
+
+        {/* Description */}
+        <textarea
+          placeholder="Description"
+          value={formData.parameters[paramKey]?.description || ""}
+          onChange={(e) =>
+            handleParameterConfig(paramKey, "description", e.target.value)
+          }
+          className="w-full rounded border px-3 py-2"
+        />
+      </div>
+    ))}
+
+    {/* Add Parameter Button */}
+    <button
+      onClick={() => {
+        const newKey = `param_${Object.keys(formData.parameters || {}).length + 1}`
+        setFormData((prev) => ({
+          ...prev,
+          parameters: {
+            ...prev.parameters,
+            [newKey]: {
+              type: "",
+              required: false,
+              description: "",
+            },
+          },
+        }))
+      }}
+      className="px-4 py-2 rounded-lg bg-white text-black border border-gray-300 hover:bg-gray-100"
+    >
+      + Add Parameter
+    </button>
+  </div>
+)}
+
 
                                 {/* Step 7: Misc */}
                                 {/* Step 7: Misc */}
