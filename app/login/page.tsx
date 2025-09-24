@@ -360,7 +360,7 @@ export default function LoginPage() {
   THAT ANSWER EVERY CALL.<br />
 </h1>
 <p className="text-gray-600 mb-6">
-  SmartConvo by Pentagon AI — The Future of{" "}
+  SmartConvo by Pentagon AI — The Future of<br />
   <span className="text-primary">Customer Communication</span>
 </p>
 

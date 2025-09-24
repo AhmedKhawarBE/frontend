@@ -845,6 +845,68 @@ function getDeepestPlaceholder(value: string): string | null {
 
   return null
 }
+
+function extractDeepestCurlyStrings(inputStr: string): string[] {
+  // Step 1: Remove double quotes
+  let s: string = inputStr.replace(/"/g, "");
+
+  // Step 2: Balance curly braces using stack
+  let stack: number[] = [];
+  let toRemove: Set<number> = new Set();
+
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === "{") {
+      stack.push(i);
+    } else if (ch === "}") {
+      if (stack.length > 0) {
+        stack.pop(); // valid pair
+      } else {
+        toRemove.add(i); // extra closing
+      }
+    }
+  }
+
+  while (stack.length > 0) {
+    toRemove.add(stack.pop()!); // extra opening
+  }
+
+  // Build balanced string
+  s = s
+    .split("")
+    .map((ch, idx) => (toRemove.has(idx) ? "" : ch))
+    .join("");
+
+  // Step 3: Traverse and extract deepest substrings
+  let result: string[] = [];
+  stack = [];
+
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "{") {
+      stack.push(i);
+    }
+
+    if (s[i] === "}" && stack.length > 0) {
+      const candidate = s.slice(stack[stack.length - 1] + 1, i).trim();
+
+      // ✅ Filter: skip if contains :, [ or ], or empty
+      if (
+        candidate &&
+        !candidate.includes(":") &&
+        !candidate.includes("[") &&
+        !candidate.includes("]")
+      ) {
+        result.push(candidate);
+      }
+
+      stack = []; // reset for next deepest block
+    }
+  }
+
+  // ✅ Remove duplicates
+  return Array.from(new Set(result));
+}
+
 const extractPlaceholdersFromString = (str: string): string[] => {
   const found: string[] = []
   const regex = /\{([^{}]+)\}/g // match {word}
@@ -992,12 +1054,13 @@ const handleSubmit = async () => {
       headers: formatKV(formData.headers),
       query_template: formatKV(formData.query_template),
       body_template: formatKV(formData.body_template),
-      parameters: extractedParams.reduce((acc, key) => {
-        if (formData.parameters[key]) {
-          acc[key] = formData.parameters[key]
-        }
-        return acc
-      }, {} as Record<string, any>),
+      // parameters: extractedParams.reduce((acc, key) => {
+      //   if (formData.parameters[key]) {
+      //     acc[key] = formData.parameters[key]
+      //   }
+      //   return acc
+      // }, {} as Record<string, any>),
+      parameters: formData.parameters,
       omit_nulls: formData.omit_nulls,
       timeout_ms: formData.timeout_ms,
       speak_during_execution: {
@@ -1412,12 +1475,16 @@ const res = await fetch(url, {
 
                                 const newEntries = shallowFlatten(parsed)
 
-                                // --- Collect placeholders from keys + values ---
-                                const placeholders: string[] = []
-                                newEntries.forEach((entry) => {
-                                placeholders.push(...extractPlaceholdersFromString(entry.key))
-                                placeholders.push(...extractPlaceholdersFromString(entry.value))
-                                })
+// --- Collect placeholders from keys + values ---
+const placeholders: string[] = []
+newEntries.forEach((entry) => {
+  // from keys
+  placeholders.push(...extractPlaceholdersFromString(entry.key))
+
+  // from values (deepest curly brace strings)
+  placeholders.push(...extractDeepestCurlyStrings(entry.value))
+})
+
 
                                 setFormData((prev: any) => ({
                                 ...prev,
