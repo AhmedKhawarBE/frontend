@@ -200,7 +200,6 @@
 // }
 
 
-
 "use client"
 
 import type React from "react"
@@ -216,6 +215,7 @@ import { useAuth } from "@/components/auth-provider"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 
+
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -226,6 +226,8 @@ export default function LoginPage() {
   const [twoFACode, setTwoFACode] = useState("")
   const [verifying2FA, setVerifying2FA] = useState(false)
   const [token_captcha, setTokenCaptcha] = useState("")
+  const [statusMessage, setStatusMessage] = useState("")
+
 
   const router = useRouter()
   const { login } = useAuth()
@@ -247,6 +249,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const captchaToken = (window as any).grecaptcha?.getResponse()
+
     if (!captchaToken) {
       alert("Please complete the CAPTCHA.")
       return
@@ -254,14 +257,23 @@ export default function LoginPage() {
 
     setTokenCaptcha(captchaToken)
     Cookies.set("CaptchaToken", captchaToken, { expires: 0.04 })
-    setIsLoading(true)
 
+    setIsLoading(true)
+    console.log(captchaToken)
     try {
+     
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/login/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, captcha_token: captchaToken }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          captcha_token: captchaToken,
+        }),
       })
+
       const data = await response.json()
 
       if (data.two_fa_required) {
@@ -270,27 +282,49 @@ export default function LoginPage() {
         return
       }
 
-      if (!response.ok) throw new Error(data?.message || "Login failed")
-
+      if (!response.ok) {
+        throw new Error(data?.message || "Login failed")
+      }
+      console.log("Login response:", data)
       if (data.user_type === "company" && data.status !== "active") {
-        toast({ title: "Login blocked", description: "Your company is not active. Contact support.", variant: "destructive" })
+        toast({
+          title: "Login blocked",
+          description: "Your company is not active. Please contact support.",
+          variant: "destructive",
+        })
         setIsLoading(false)
         return
       }
 
-      if (data.token) {
+      if (data.token && data.user_type === "company_user" && !data.previous_last_login) {
+        localStorage.setItem("user", JSON.stringify(data))
+        Cookies.set("Token", data.token, { expires: 7 })
+        router.push("/first-time-setup")
+      } else if (
+        data.token &&
+        (data.user_type === loginType || (data.user_type === "company_user" && loginType === "user"))
+      ) {
         localStorage.setItem("loginType", loginType)
         Cookies.set("Token", data.token, { expires: 7 })
         login({ email, name: data.name || "John Doe", type: loginType })
         router.push("/dashboard")
+      } else {
+        toast({
+          title: "Login error",
+          description: "User not verified or login type mismatch",
+          variant: "destructive",
+        })
       }
     } catch (err: any) {
       console.error("Login error:", err)
       alert(err.message)
     } finally {
-      if (!require2FA && !Cookies.get("Token")) {
-        setIsLoading(false)
-        ;(window as any).grecaptcha?.reset()
+      if (!require2FA) {
+    // only stop loading if login failed
+        if (!Cookies.get("Token")) {
+          setIsLoading(false)
+          ;(window as any).grecaptcha?.reset()
+        }
       }
     }
   }
@@ -300,46 +334,75 @@ export default function LoginPage() {
     const tempToken = Cookies.get("TempToken")
 
     if (!twoFACode || twoFACode.length !== 6 || !tempToken) {
-      toast({ title: "Invalid code", description: "Enter a valid 6-digit code", variant: "destructive" })
+      toast({ title: "Invalid code", description: "Please enter a valid 6-digit code", variant: "destructive" })
       setVerifying2FA(false)
       return
     }
-
+    // console.log(Cookies.get("CaptchaToken"))
+    // const token_captcha = Cookies.get("CaptchaToken")
     const captchaToken = (window as any).grecaptcha?.getResponse()
+
     if (!captchaToken) {
       alert("Please complete the CAPTCHA.")
       return
     }
 
     setTokenCaptcha(captchaToken)
-
+    console.log(captchaToken)
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/login/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, captcha_token: captchaToken, token: twoFACode }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          captcha_token: captchaToken,
+          token: twoFACode,
+        }),
       })
 
       const result = await response.json()
-      if (!response.ok) throw new Error(result?.message || "Invalid 2FA code")
+      console.log(result)
+
+      if (!response.ok) {
+        throw new Error(result?.message || "Invalid 2FA code")
+      }
 
       toast({ title: "2FA Success", description: "You're now logged in." })
+
       Cookies.set("Token", tempToken, { expires: 7 })
       Cookies.remove("TempToken")
 
-      if (result.token) {
+      if (result.token && result.user_type === "company_user" && !result.previous_last_login) {
+        localStorage.setItem("user", JSON.stringify(result))
+        Cookies.set("Token", result.token, { expires: 7 })
+        router.push("/first-time-setup")
+      } else if (
+        result.token &&
+        (result.user_type === loginType || (result.user_type === "company_user" && loginType === "user"))
+      ) {
         localStorage.setItem("loginType", loginType)
         Cookies.set("Token", result.token, { expires: 7 })
         login({ email, name: result.name || "John Doe", type: loginType })
         router.push("/dashboard")
+      } else {
+        toast({
+          title: "Login error",
+          description: "User not verified or login type mismatch",
+          variant: "destructive",
+        })
       }
+
+      // login({ email, name: result.name || "John Doe", type: loginType })
+      // router.push("/dashboard")
     } catch (err: any) {
       toast({ title: "2FA Error", description: err.message, variant: "destructive" })
     } finally {
       setVerifying2FA(false)
     }
   }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
       {/* Background Image */}

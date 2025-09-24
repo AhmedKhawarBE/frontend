@@ -274,7 +274,11 @@ export default function BillingPage() {
               </div>
               <div className="p-4 rounded-lg bg-gray-50 shadow-sm">
                 <p className="text-sm text-gray-500">Extra Cost</p>
-                <p className="text-xl font-bold text-red-600">${usage.extra_cost.toFixed(2)}</p>
+                {usage.extra_cost ? (
+                  <p className="text-xl font-bold text-red-600">${usage.extra_cost.toFixed(2)}</p>
+                ) : (
+                  <p className="text-xl font-bold">No extra minutes</p>
+                )}
               </div>
               <div className="p-4 rounded-lg bg-gray-50 shadow-sm col-span-2">
                 <p className="text-sm text-gray-500">Last Reset</p>
