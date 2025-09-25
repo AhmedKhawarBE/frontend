@@ -18,7 +18,7 @@ interface Message {
   assistant_response: string
   summary: string
   phonenumber?: string
-  caller_number?: string // ✅ Added caller_number field
+  caller_number?: string
 }
 
 function CallsTab() {
@@ -27,9 +27,7 @@ function CallsTab() {
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
-  const [viewType, setViewType] = useState<"transcript" | "summary" | null>(
-    null
-  )
+  const [viewType, setViewType] = useState<"transcript" | "summary" | null>(null)
   const pageSize = 5
 
   useEffect(() => {
@@ -48,7 +46,6 @@ function CallsTab() {
         )
         if (!res.ok) throw new Error("Failed to fetch messages")
         const data: Message[] = await res.json()
-        console.log(data)
         setMessages(data)
       } catch (err: any) {
         setError(err.message)
@@ -81,6 +78,13 @@ function CallsTab() {
   const latestSummary =
     selectedMessages?.find((m) => m.type === "summary") || null
 
+  const formatDuration = (ms: number) => {
+    const totalSec = Math.floor(ms / 1000)
+    const mins = Math.floor(totalSec / 60)
+    const secs = totalSec % 60
+    return `${mins}m ${secs}s`
+  }
+
   if (loading) return <div className="p-6">Loading conversations...</div>
   if (error) return <div className="p-6 text-red-600">Error: {error}</div>
 
@@ -104,32 +108,33 @@ function CallsTab() {
           <table className="min-w-full text-sm text-left table-fixed">
             <thead className="bg-slate-100 border-b">
               <tr>
-                <th className="px-4 py-2 font-medium text-slate-700 w-40">
-                  Phone
-                </th>
-                {/* ✅ New Caller Number column */}
-                <th className="px-4 py-2 font-medium text-slate-700 w-40">
-                  Caller Number
-                </th>
-                <th className="px-4 py-2 font-medium text-slate-700 w-24">
-                  Messages
-                </th>
-                <th className="px-4 py-2 font-medium text-slate-700 w-48">
-                  Started At
-                </th>
-                <th className="px-4 py-2 font-medium text-slate-700 w-32">
-                  Transcript
-                </th>
-                <th className="px-4 py-2 font-medium text-slate-700 w-32">
-                  Summary
-                </th>
+                <th className="px-4 py-2 font-medium text-slate-700 w-40">Phone</th>
+                <th className="px-4 py-2 font-medium text-slate-700 w-40">Caller Number</th>
+                <th className="px-4 py-2 font-medium text-slate-700 w-24">Messages</th>
+                <th className="px-4 py-2 font-medium text-slate-700 w-48">Started At</th>
+                <th className="px-4 py-2 font-medium text-slate-700 w-32">Call Duration</th>
+                <th className="px-4 py-2 font-medium text-slate-700 w-32">Transcript</th>
+                <th className="px-4 py-2 font-medium text-slate-700 w-32">Summary</th>
               </tr>
             </thead>
             <tbody>
               {paginated.map(([sessionID, msgs]) => {
-                const startedAt = new Date(msgs[0].timestamp).toLocaleString()
+                const sortedMsgs = [...msgs].sort(
+                  (a, b) =>
+                    new Date(a.timestamp).getTime() -
+                    new Date(b.timestamp).getTime()
+                )
 
-                // ✅ Get phone number from the latest message
+                const startedAt = new Date(sortedMsgs[0].timestamp).toLocaleString()
+                const startedAtMs = new Date(sortedMsgs[0].timestamp).getTime()
+
+                const summaryMsg = sortedMsgs.find((m) => m.type === "summary")
+                const endedAtMs = summaryMsg
+                  ? new Date(summaryMsg.timestamp).getTime() + 15000 // add 3 sec
+                  : new Date(sortedMsgs[sortedMsgs.length - 1].timestamp).getTime()
+
+                const callDuration = formatDuration(endedAtMs - startedAtMs)
+
                 const lastMsg = [...msgs].sort(
                   (a, b) =>
                     new Date(b.timestamp).getTime() -
@@ -137,18 +142,9 @@ function CallsTab() {
                 )[0]
                 const phoneNumber = lastMsg?.phonenumber || "Unknown"
 
-                // ✅ Look for caller number in all messages
                 const callerNumber =
                   msgs.find((m) => m.caller_number)?.caller_number ||
                   "No caller number found"
-
-                const summaryMsg = [...msgs]
-                  .sort(
-                    (a, b) =>
-                      new Date(b.timestamp).getTime() -
-                      new Date(a.timestamp).getTime()
-                  )
-                  .find((m) => m.type === "summary")
 
                 const previewSummary = summaryMsg
                   ? summaryMsg.summary.split(" ").slice(0, 3).join(" ") + "..."
@@ -156,14 +152,11 @@ function CallsTab() {
 
                 return (
                   <tr key={sessionID} className="border-b hover:bg-slate-50">
-                    <td className="px-4 py-2 font-medium text-slate-800">
-                      {phoneNumber}
-                    </td>
-                    <td className="px-4 py-2 font-medium text-slate-800">
-                      {callerNumber}
-                    </td>
+                    <td className="px-4 py-2 font-medium text-slate-800">{phoneNumber}</td>
+                    <td className="px-4 py-2 font-medium text-slate-800">{callerNumber}</td>
                     <td className="px-4 py-2">{msgs.length}</td>
                     <td className="px-4 py-2 text-slate-600">{startedAt}</td>
+                    <td className="px-4 py-2 text-slate-600">{callDuration}</td>
                     <td
                       className="px-4 py-2 cursor-pointer text-blue-600"
                       onClick={() => {
@@ -218,7 +211,6 @@ function CallsTab() {
       {/* Right: Details Panel */}
       {selectedSession && (
         <div className="w-1/2 border rounded-lg p-4 bg-slate-50 relative mt-6 mr-4">
-          {/* Close button */}
           <button
             onClick={() => {
               setSelectedSession(null)
@@ -241,16 +233,9 @@ function CallsTab() {
                 .map((m) => {
                   if (m.type === "summary") return null
                   return (
-                    <div
-                      key={m.id}
-                      className="border p-3 rounded bg-white shadow-sm"
-                    >
-                      <p className="font-medium text-slate-700">
-                        👤 {m.user_question}
-                      </p>
-                      <p className="text-slate-800">
-                        🤖 {m.assistant_response}
-                      </p>
+                    <div key={m.id} className="border p-3 rounded bg-white shadow-sm">
+                      <p className="font-medium text-slate-700">👤 {m.user_question}</p>
+                      <p className="text-slate-800">🤖 {m.assistant_response}</p>
                       <p className="text-xs text-slate-500 mt-1">
                         {new Date(m.timestamp).toLocaleString()}
                       </p>
