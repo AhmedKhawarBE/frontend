@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { ChevronLeft, ChevronRight, Search, ChevronDown } from "lucide-react"
 import Cookies from "js-cookie"
 import React from "react"
+import { formatPhone } from "@/libs/formatPhone"
 
 interface Message {
   id: number
@@ -17,6 +18,7 @@ interface Message {
   assistant_response: string
   summary: string
   phonenumber?: string
+  caller_number?: string // ✅ Added caller_number field
 }
 
 function CallsTab() {
@@ -46,7 +48,7 @@ function CallsTab() {
         )
         if (!res.ok) throw new Error("Failed to fetch messages")
         const data: Message[] = await res.json()
-      console.log(data)
+        console.log(data)
         setMessages(data)
       } catch (err: any) {
         setError(err.message)
@@ -105,6 +107,10 @@ function CallsTab() {
                 <th className="px-4 py-2 font-medium text-slate-700 w-40">
                   Phone
                 </th>
+                {/* ✅ New Caller Number column */}
+                <th className="px-4 py-2 font-medium text-slate-700 w-40">
+                  Caller Number
+                </th>
                 <th className="px-4 py-2 font-medium text-slate-700 w-24">
                   Messages
                 </th>
@@ -121,18 +127,20 @@ function CallsTab() {
             </thead>
             <tbody>
               {paginated.map(([sessionID, msgs]) => {
-                const startedAt = new Date(
-                  msgs[0].timestamp
-                ).toLocaleString()
+                const startedAt = new Date(msgs[0].timestamp).toLocaleString()
 
-                // ✅ Get phone number from the last message
+                // ✅ Get phone number from the latest message
                 const lastMsg = [...msgs].sort(
                   (a, b) =>
                     new Date(b.timestamp).getTime() -
                     new Date(a.timestamp).getTime()
                 )[0]
-                const phoneNumber = lastMsg?.phonenumber || "+19893943633"
-                // const phoneNumber = lastMsg?.phonenumber || "Unknownnnnn"
+                const phoneNumber = lastMsg?.phonenumber || "Unknown"
+
+                // ✅ Look for caller number in all messages
+                const callerNumber =
+                  msgs.find((m) => m.caller_number)?.caller_number ||
+                  "No caller number found"
 
                 const summaryMsg = [...msgs]
                   .sort(
@@ -147,12 +155,12 @@ function CallsTab() {
                   : "No summary"
 
                 return (
-                  <tr
-                    key={sessionID}
-                    className="border-b hover:bg-slate-50"
-                  >
+                  <tr key={sessionID} className="border-b hover:bg-slate-50">
                     <td className="px-4 py-2 font-medium text-slate-800">
                       {phoneNumber}
+                    </td>
+                    <td className="px-4 py-2 font-medium text-slate-800">
+                      {callerNumber}
                     </td>
                     <td className="px-4 py-2">{msgs.length}</td>
                     <td className="px-4 py-2 text-slate-600">{startedAt}</td>

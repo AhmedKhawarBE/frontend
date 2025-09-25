@@ -107,6 +107,7 @@
 //     </div>
 //   )
 // }
+
 "use client"
 
 import { useEffect, useState } from "react"
@@ -116,6 +117,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Eye, EyeOff, Lock, Mail } from "lucide-react"
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -126,6 +128,7 @@ export default function AdminLoginPage() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     const script = document.createElement("script")
@@ -150,9 +153,7 @@ export default function AdminLoginPage() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/login/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: credentials.username,
           password: credentials.password,
@@ -162,9 +163,7 @@ export default function AdminLoginPage() {
 
       const data = await response.json()
 
-      if (!response.ok) {
-        throw new Error(data?.message || "Invalid credentials")
-      }
+      if (!response.ok) throw new Error(data?.message || "Invalid credentials")
 
       if (data.token && data.user_type === "superuser") {
         Cookies.set("adminToken", data.token, { expires: 7 })
@@ -188,49 +187,91 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-      <Card className="w-full max-w-md shadow-xl border-0">
-        <CardHeader>
-          <CardTitle className="text-2xl">Admin Login</CardTitle>
-          <CardDescription>Enter your admin credentials to access the dashboard.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <Label htmlFor="username">Email</Label>
-              <Input
-                id="username"
-                type="email"
-                value={credentials.username}
-                onChange={(e) =>
-                  setCredentials({ ...credentials, username: e.target.value })
-                }
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={credentials.password}
-                onChange={(e) =>
-                  setCredentials({ ...credentials, password: e.target.value })
-                }
-                required
-              />
-            </div>
+    <div className="relative min-h-screen flex items-center justify-center p-6">
+      {/* Background image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-70"
+        style={{ backgroundImage: "url('/agent-bg.jpg')" }}
+      ></div>
 
-            <div className="g-recaptcha" data-sitekey="6Lfl9ZErAAAAAIOsgxGYsnBLhmOJLhafaXEW5Hia"></div>
+      {/* Overlay to slightly darken background for readability */}
+      <div className="absolute inset-0 bg-black/30"></div>
 
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+      {/* Foreground content */}
+      <div className="relative z-10 w-full max-w-md">
+        <Card className="shadow-2xl rounded-2xl border-0 bg-white/90 backdrop-blur-md">
+          <CardHeader className="text-center space-y-2">
+            <CardTitle className="text-3xl font-bold text-slate-800">Admin Login</CardTitle>
+            <CardDescription className="text-slate-500">
+              Secure access to the admin dashboard
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-5">
+              {/* Email field */}
+              <div className="space-y-1">
+                <Label htmlFor="username">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                  <Input
+                    id="username"
+                    type="email"
+                    value={credentials.username}
+                    onChange={(e) =>
+                      setCredentials({ ...credentials, username: e.target.value })
+                    }
+                    className="pl-10"
+                    placeholder="admin@example.com"
+                    required
+                  />
+                </div>
+              </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Logging in..." : "Login as Admin"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              {/* Password field */}
+              <div className="space-y-1">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={credentials.password}
+                    onChange={(e) =>
+                      setCredentials({ ...credentials, password: e.target.value })
+                    }
+                    className="pl-10 pr-10"
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Captcha */}
+              <div className="g-recaptcha" data-sitekey="6Lfl9ZErAAAAAIOsgxGYsnBLhmOJLhafaXEW5Hia"></div>
+
+              {/* Error message */}
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+
+              {/* Submit button */}
+              <Button
+                type="submit"
+                className="w-full py-2 text-lg font-semibold bg-slate-800 hover:bg-slate-700 transition rounded-lg"
+                disabled={loading}
+              >
+                {loading ? "Logging in..." : "Login as Admin"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
+
