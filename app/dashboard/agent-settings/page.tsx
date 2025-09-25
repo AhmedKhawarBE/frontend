@@ -39,7 +39,6 @@ const tabs = [
   { id: "agent-prompts", label: "Agent Prompts" },
   { id: "voice-settings", label: "Voice Settings" },
   { id: "tools", label: "Tools & Numbers" }, 
-  { id: "agent-config", label: "Configs" }, 
   { id: "faq", label: "FAQ" },
   { id: "additional-settings", label: "Additional Settings" },
 ]
