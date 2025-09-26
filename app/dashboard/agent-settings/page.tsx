@@ -510,7 +510,8 @@ function ToolsTab({ agentId }: { agentId: string }) {
           </div>
 
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
-            <DialogContent className="max-w-5xl rounded-3xl backdrop-blur-md bg-white/80 dark:bg-slate-900/80 shadow-2xl">
+            <DialogContent className="max-w-5xl rounded-3xl backdrop-blur-md bg-white/80 dark:bg-slate-900/80 shadow-2xl 
+              max-h-[80vh] overflow-y-auto">
               <DialogHeader className="text-center">
                 <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-500 bg-clip-text text-transparent">
                   Custom Tools
@@ -525,6 +526,7 @@ function ToolsTab({ agentId }: { agentId: string }) {
                 <ToolsList />
               )}
             </DialogContent>
+
           </Dialog>
 
           {/* Save Button */}

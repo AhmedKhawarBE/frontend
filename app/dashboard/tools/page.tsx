@@ -220,17 +220,18 @@ export default function ToolsPage() {
                 onClick={() => setExpanded(expanded === tool.id ? null : tool.id)}
                 className="cursor-pointer"
               >
-                <CardTitle className="flex items-center justify-between">
-                  <span className="text-lg font-semibold">{tool.name}</span>
-                  <div className="flex items-center gap-2">
+                <CardTitle className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-lg font-semibold truncate min-w-0">{tool.name}</span>
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <MethodBadge method={tool.method} />
                     {expanded === tool.id ? (
-                      <ChevronUp className="w-4 h-4 text-slate-500" />
+                      <ChevronUp className="w-4 h-4 text-slate-500 flex-shrink-0" />
                     ) : (
-                      <ChevronDown className="w-4 h-4 text-slate-500" />
+                      <ChevronDown className="w-4 h-4 text-slate-500 flex-shrink-0" />
                     )}
                   </div>
                 </CardTitle>
+
                 <CardDescription className="truncate text-slate-600">
                   {tool.description || "No description"}
                 </CardDescription>
@@ -264,7 +265,7 @@ export default function ToolsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1"
+                  className="flex-1 min-w-[90px]"
                   onClick={() => setViewTool(tool)}
                 >
                   <Eye className="w-4 h-4 mr-1" /> View
@@ -272,7 +273,7 @@ export default function ToolsPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="flex-1"
+                  className="flex-1 min-w-[90px]"
                   onClick={() => {
                     setEditTool(tool)
                     setShowDialog(true)
@@ -283,12 +284,13 @@ export default function ToolsPage() {
                 <Button
                   variant="destructive"
                   size="sm"
-                  className="flex-1"
+                  className="flex-1 min-w-[90px]"
                   onClick={() => confirmDelete(tool.id)}
                 >
                   <Trash2 className="w-4 h-4 mr-1" /> Delete
                 </Button>
               </CardFooter>
+
             </Card>
           ))}
         </div>
