@@ -1898,7 +1898,8 @@ function VoiceSettingsTab({ agentId }: { agentId: string }) {
         setStability(data.voice_stability ?? 50)
         setClarity(data.voice_clarity ?? 50)
         setStyleExaggeration(data.voice_style ?? 50)
-        setVoiceSpeed(Math.round(((2 - data.voice_speed) / 1.5) * 100) ?? 50)
+        // setVoiceSpeed(Math.round(((2 - data.voice_speed) / 1.5) * 100) ?? 50)
+        setVoiceSpeed(data.voice_speed ?? 50)
         setSpeakerBoost(data.speaker_boost ?? true)
       } catch (error) {
         console.error("Failed to load voice settings:", error)
@@ -1922,7 +1923,8 @@ function VoiceSettingsTab({ agentId }: { agentId: string }) {
           voice_stability: stability,
           voice_clarity: clarity,
           voice_style: styleExaggeration,
-          voice_speed: -1 * ((voiceSpeed * (1.5 / 100)) - 2),
+          // voice_speed: -1 * ((voiceSpeed * (1.5 / 100)) - 2),
+          voice_speed: voiceSpeed,
           speaker_boost: speakerBoost,
         }),
       })
