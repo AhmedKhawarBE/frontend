@@ -1882,6 +1882,7 @@ function VoiceSettingsTab({ agentId }: { agentId: string }) {
   const [styleExaggeration, setStyleExaggeration] = useState(50)
   const [voiceSpeed, setVoiceSpeed] = useState(50)
   const [speakerBoost, setSpeakerBoost] = useState(true)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchSettings() {
@@ -1894,13 +1895,15 @@ function VoiceSettingsTab({ agentId }: { agentId: string }) {
           },
         })
         const data = await res.json()
-        setStability(data.voice_stability || 50)
-        setClarity(data.voice_clarity || 50)
-        setStyleExaggeration(data.voice_style || 50)
-        setVoiceSpeed( Math.round(((2 - data.voice_speed) / (2 - 0.5)) * 100)  || 50)
+        setStability(data.voice_stability ?? 50)
+        setClarity(data.voice_clarity ?? 50)
+        setStyleExaggeration(data.voice_style ?? 50)
+        setVoiceSpeed(Math.round(((2 - data.voice_speed) / 1.5) * 100) ?? 50)
         setSpeakerBoost(data.speaker_boost ?? true)
       } catch (error) {
         console.error("Failed to load voice settings:", error)
+      } finally {
+        setLoading(false)
       }
     }
 
@@ -1909,7 +1912,6 @@ function VoiceSettingsTab({ agentId }: { agentId: string }) {
 
   const handleSave = async () => {
     try {
-      
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`, {
         method: "PATCH",
         headers: {
@@ -1920,102 +1922,50 @@ function VoiceSettingsTab({ agentId }: { agentId: string }) {
           voice_stability: stability,
           voice_clarity: clarity,
           voice_style: styleExaggeration,
-          voice_speed: -1 * ((voiceSpeed * ((2 - 0.5) / 100)) - 2),
+          voice_speed: -1 * ((voiceSpeed * (1.5 / 100)) - 2),
           speaker_boost: speakerBoost,
         }),
       })
 
       if (res.ok) {
-        toast({
-          title: "Voice settings updated",
-          description: "Your voice preferences have been saved successfully.",
-        })
-      } else {
-        throw new Error("Failed to update")
-      }
-    } catch (error) {
-      console.error("Failed to save voice settings:", error)
-      toast({
-        title: "Update failed",
-        description: "Something went wrong while saving voice settings.",
-        variant: "destructive",
-      })
+        toast({ title: "Voice settings updated", description: "Preferences saved." })
+      } else throw new Error("Failed to update")
+    } catch {
+      toast({ title: "Update failed", description: "Could not save settings.", variant: "destructive" })
     }
   }
 
-  const handleReset = async () => {
+  const handleReset = () => {
     setStability(50)
     setClarity(50)
     setStyleExaggeration(50)
     setVoiceSpeed(50)
     setSpeakerBoost(true)
+  }
 
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Token ${Cookies.get("Token") || ""}`,
-        },
-        body: JSON.stringify({
-          voice_stability: 50,
-          voice_clarity: 50,
-          voice_style: 50,
-          voice_speed: 2 - 0.5 * (50 / 100),
-          speaker_boost: true,
-        }),
-      })
-
-      if (res.ok) {
-        toast({
-          title: "Voice settings reset",
-          description: "All values have been reset to default.",
-        })
-      } else {
-        throw new Error("Failed to reset")
-      }
-    } catch (error) {
-      console.error("Failed to reset voice settings:", error)
-      toast({
-        title: "Reset failed",
-        description: "Something went wrong while resetting the settings.",
-        variant: "destructive",
-      })
-    }
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+      </div>
+    )
   }
 
   return (
-    <div className="relative max-w-2xl mx-auto p-8 bg-slate-900 rounded-2xl shadow-lg border border-slate-800 text-white">
-      <motion.h2
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-2xl font-semibold text-center mb-6"
-      >
-        Voice Generation Settings
-      </motion.h2>
+    <div className="w-full max-w-4xl mx-auto p-8 rounded-lg border border-gray-200 bg-white text-gray-900">
+      <h2 className="text-lg font-medium mb-6 text-center">Voice Settings</h2>
 
-      <p className="text-slate-400 text-center mb-10">
-        Fine-tune how your AI agent sounds. Adjust stability, clarity, style, speed, and boost for optimal performance.
-      </p>
-
-      {/* Sliders */}
-      <div className="space-y-8">
+      <div className="space-y-6">
         {[
           { label: "Stability", value: stability, set: setStability },
-          { label: "Clarity + Similarity", value: clarity, set: setClarity },
-          { label: "Style Exaggeration", value: styleExaggeration, set: setStyleExaggeration },
-          { label: "Voice Speed", value: voiceSpeed, set: setVoiceSpeed },
-        ].map(({ label, value, set }, i) => (
-          <motion.div
-            key={label}
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className="relative"
-          >
-            <div className="flex justify-between mb-2">
-              <h3 className="text-sm font-medium text-slate-200">{label}</h3>
-              <span className="text-xs text-slate-400">{value}%</span>
+          { label: "Clarity", value: clarity, set: setClarity },
+          { label: "Style", value: styleExaggeration, set: setStyleExaggeration },
+          { label: "Speed", value: voiceSpeed, set: setVoiceSpeed },
+        ].map(({ label, value, set }) => (
+          <div key={label}>
+            <div className="flex justify-between mb-1">
+              <span className="text-sm text-gray-700">{label}</span>
+              <span className="text-sm text-gray-500">{value}%</span>
             </div>
             <input
               type="range"
@@ -2023,45 +1973,31 @@ function VoiceSettingsTab({ agentId }: { agentId: string }) {
               max="100"
               value={value}
               onChange={(e) => set(Number(e.target.value))}
-              className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-slate-100"
+              className="w-full h-1.5 bg-gray-200 rounded-lg accent-gray-700 cursor-pointer"
             />
-          </motion.div>
+          </div>
         ))}
       </div>
 
-      {/* Speaker Boost */}
-      <motion.div
-        initial={{ opacity: 0, y: 5 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="flex items-center mt-10"
-      >
+      <div className="flex items-center mt-6">
         <input
           type="checkbox"
           id="speaker-boost"
           checked={speakerBoost}
           onChange={(e) => setSpeakerBoost(e.target.checked)}
-          className="w-4 h-4 accent-slate-100"
+          className="w-4 h-4 accent-gray-700"
         />
-        <label htmlFor="speaker-boost" className="ml-3 text-sm text-slate-200">
+        <label htmlFor="speaker-boost" className="ml-2 text-sm text-gray-700">
           Speaker Boost
         </label>
-      </motion.div>
+      </div>
 
-      {/* Action Buttons */}
-      <div className="flex justify-between items-center mt-10">
-        <Button
-          variant="outline"
-          className="bg-transparent border border-slate-600 text-slate-300 hover:bg-slate-800"
-          onClick={handleReset}
-        >
-          Reset to Default
+      <div className="flex justify-between mt-8">
+        <Button variant="outline" onClick={handleReset} className="text-gray-700 border-gray-300">
+          Reset
         </Button>
-        <Button
-          className="bg-slate-100 hover:bg-slate-200 text-slate-900 px-8 font-medium"
-          onClick={handleSave}
-        >
-          Save Changes
+        <Button onClick={handleSave} className="bg-gray-800 text-white hover:bg-gray-700">
+          Save
         </Button>
       </div>
     </div>
