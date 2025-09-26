@@ -5,7 +5,13 @@ import Cookies from "js-cookie"
 import { motion } from "framer-motion"
 import { Plus, Pencil, Trash2, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,22 +24,14 @@ type Subscription = {
   company: number
   plan: number
   start_date: string
-  end_date: string | null
+  end_date: string
   is_active: boolean
   stripe_subscription_id: string
 }
 
-type Company = {
-  id: number
-  name: string
-}
+type Company = { id: number; name: string }
+type Plan = { id: number; name: string }
 
-type Plan = {
-  id: number
-  name: string
-}
-
-// helper headers
 const getHeaders = () => ({
   "Content-Type": "application/json",
   Authorization: `Token ${Cookies.get("adminToken") || ""}`,
@@ -51,16 +49,13 @@ export default function SubscriptionsPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [plans, setPlans] = useState<Plan[]>([])
 
-  // List all subscriptions
+  // API Calls
   const fetchSubscriptions = async () => {
     try {
       setLoading(true)
-      const res = await fetch(`${API_BASE}/subscriptions/`, {
-        headers: getHeaders(),
-      })
+      const res = await fetch(`${API_BASE}/subscriptions/`, { headers: getHeaders() })
       if (!res.ok) throw new Error("Failed to fetch subscriptions")
-      const data = await res.json()
-      setSubscriptions(data)
+      setSubscriptions(await res.json())
     } catch (err) {
       console.error(err)
     } finally {
@@ -68,37 +63,26 @@ export default function SubscriptionsPage() {
     }
   }
 
-  // Fetch companies
   const fetchCompanies = async () => {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/companies/`, {
         headers: getHeaders(),
       })
-      if (res.ok) {
-        const data = await res.json()
-        setCompanies(data)
-      }
+      if (res.ok) setCompanies(await res.json())
     } catch (err) {
       console.error("Failed to fetch companies", err)
     }
   }
 
-  // Fetch plans ⭐ NEW
   const fetchPlans = async () => {
     try {
-      const res = await fetch(`${API_BASE}/plans/`, {
-        headers: getHeaders(),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setPlans(data)
-      }
+      const res = await fetch(`${API_BASE}/plans/`, { headers: getHeaders() })
+      if (res.ok) setPlans(await res.json())
     } catch (err) {
       console.error("Failed to fetch plans", err)
     }
   }
 
-  // Get by ID (for edit)
   const fetchSubscriptionById = async (id: number) => {
     try {
       const res = await fetch(`${API_BASE}/subscriptions/${id}/`, {
@@ -111,8 +95,6 @@ export default function SubscriptionsPage() {
         setIsDialogOpen(true)
         fetchCompanies()
         fetchPlans()
-      } else {
-        console.error("Failed to fetch subscription", await res.text())
       }
     } catch (err) {
       console.error(err)
@@ -123,7 +105,6 @@ export default function SubscriptionsPage() {
     fetchSubscriptions()
   }, [])
 
-  // Fetch companies & plans whenever dialog opens
   useEffect(() => {
     if (isDialogOpen) {
       fetchCompanies()
@@ -131,8 +112,26 @@ export default function SubscriptionsPage() {
     }
   }, [isDialogOpen])
 
-  // Create / Update
+  // Validation & Submit
   const handleSubmit = async () => {
+    const { company, plan, start_date, end_date, stripe_subscription_id } = formData
+
+    if (!company || !plan || !start_date || !end_date || !stripe_subscription_id) {
+      toast({ title: "Error", description: "All fields are required.", variant: "destructive" })
+      return
+    }
+
+    const today = new Date().toISOString().split("T")[0]
+    if (start_date < today) {
+      toast({ title: "Error", description: "Start date cannot be before today.", variant: "destructive" })
+      return
+    }
+
+    if (end_date <= start_date) {
+      toast({ title: "Error", description: "End date must be after start date.", variant: "destructive" })
+      return
+    }
+
     const method = selectedSub ? "PUT" : "POST"
     const url = selectedSub
       ? `${API_BASE}/subscriptions/${selectedSub.id}/`
@@ -149,13 +148,15 @@ export default function SubscriptionsPage() {
       setFormData({})
       setSelectedSub(null)
       fetchSubscriptions()
-      toast({ title: "Success", description: `Subscription ${selectedSub ? "updated" : "created"} successfully.` })
+      toast({
+        title: "Success",
+        description: `Subscription ${selectedSub ? "updated" : "created"} successfully.`,
+      })
     } else {
       toast({ title: "Error", description: "Failed to save subscription.", variant: "destructive" })
     }
   }
 
-  // Delete
   const handleDelete = async () => {
     if (!deleteId) return
     const res = await fetch(`${API_BASE}/subscriptions/${deleteId}/`, {
@@ -173,10 +174,12 @@ export default function SubscriptionsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-800">Subscriptions</h1>
+        <h1 className="text-4xl font-extrabold bg-gradient-to-r from-indigo-600 to-blue-500 bg-clip-text text-transparent">
+          Subscriptions
+        </h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button
@@ -184,29 +187,30 @@ export default function SubscriptionsPage() {
                 setSelectedSub(null)
                 setFormData({})
               }}
+              className="rounded-full shadow-lg"
             >
               <Plus className="mr-2 h-4 w-4" /> New Subscription
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-lg rounded-2xl p-6 shadow-2xl">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="text-2xl font-semibold">
                 {selectedSub ? "Edit Subscription" : "Create Subscription"}
               </DialogTitle>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              {/* Company dropdown */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="company" className="text-right">Company</Label>
+
+            {/* Form */}
+            <div className="grid gap-5 py-4">
+              {/* Company */}
+              <div>
+                <Label htmlFor="company">Company</Label>
                 <select
                   id="company"
-                  className="col-span-3 border rounded p-2"
+                  className="w-full rounded-lg border p-2"
                   value={formData.company ?? ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, company: Number(e.target.value) })
-                  }
+                  onChange={(e) => setFormData({ ...formData, company: Number(e.target.value) })}
                 >
-                  <option value="">Select a company</option>
+                  <option value="">Select company</option>
                   {companies.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -215,18 +219,16 @@ export default function SubscriptionsPage() {
                 </select>
               </div>
 
-              {/* Plan dropdown ⭐ NEW */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="plan" className="text-right">Plan</Label>
+              {/* Plan */}
+              <div>
+                <Label htmlFor="plan">Plan</Label>
                 <select
                   id="plan"
-                  className="col-span-3 border rounded p-2"
+                  className="w-full rounded-lg border p-2"
                   value={formData.plan ?? ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, plan: Number(e.target.value) })
-                  }
+                  onChange={(e) => setFormData({ ...formData, plan: Number(e.target.value) })}
                 >
-                  <option value="">Select a plan</option>
+                  <option value="">Select plan</option>
                   {plans.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
@@ -235,53 +237,58 @@ export default function SubscriptionsPage() {
                 </select>
               </div>
 
-              {/* Other fields remain Input */}
-              {["start_date", "end_date", "is_active", "stripe_subscription_id"].map((field) => (
-                <div key={field} className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor={field} className="text-right capitalize">
-                    {field.replace(/_/g, " ")}
-                  </Label>
+              {/* Dates */}
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <Label htmlFor="start_date">Start Date</Label>
                   <Input
-                    id={field}
-                    type={
-                      field.includes("date")
-                        ? "date"
-                        : field === "is_active"
-                        ? "checkbox"
-                        : "text"
-                    }
-                    checked={
-                      field === "is_active"
-                        ? (formData as any)[field] ?? false
-                        : undefined
-                    }
-                    value={
-                      field === "is_active"
-                        ? undefined
-                        : (formData as any)[field] ?? ""
-                    }
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        [field]:
-                          field === "is_active"
-                            ? e.target.checked
-                            : e.target.value,
-                      })
-                    }
-                    className="col-span-3"
+                    id="start_date"
+                    type="date"
+                    value={formData.start_date ?? ""}
+                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                   />
                 </div>
-              ))}
+                <div className="flex-1">
+                  <Label htmlFor="end_date">End Date</Label>
+                  <Input
+                    id="end_date"
+                    type="date"
+                    value={formData.end_date ?? ""}
+                    onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Stripe ID */}
+              <div>
+                <Label htmlFor="stripe_subscription_id">Stripe Subscription ID</Label>
+                <Input
+                  id="stripe_subscription_id"
+                  type="text"
+                  value={formData.stripe_subscription_id ?? ""}
+                  onChange={(e) => setFormData({ ...formData, stripe_subscription_id: e.target.value })}
+                />
+              </div>
+
+              {/* Active */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={formData.is_active ?? false}
+                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                />
+                <Label>Active</Label>
+              </div>
             </div>
-            <Button onClick={handleSubmit} className="w-full">
+
+            <Button onClick={handleSubmit} className="w-full rounded-lg shadow-md">
               {selectedSub ? "Update" : "Create"}
             </Button>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Subscriptions grid */}
+      {/* Subscriptions Grid */}
       {loading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="animate-spin h-8 w-8 text-gray-500" />
@@ -289,12 +296,21 @@ export default function SubscriptionsPage() {
       ) : (
         <motion.div layout className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {subscriptions.map((sub) => (
-            <motion.div key={sub.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-              <Card className="shadow-md hover:shadow-xl transition-all rounded-2xl">
+            <motion.div
+              key={sub.id}
+              layout
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <Card className="rounded-2xl shadow-md hover:shadow-xl transition-all">
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-xl font-semibold">Sub #{sub.id}</CardTitle>
+                  <CardTitle className="text-lg font-semibold">Sub #{sub.id}</CardTitle>
                   <div className="flex space-x-2">
-                    <Button variant="ghost" size="sm" onClick={() => fetchSubscriptionById(sub.id)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => fetchSubscriptionById(sub.id)}
+                    >
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
@@ -313,7 +329,7 @@ export default function SubscriptionsPage() {
                   <p><strong>Company:</strong> {sub.company}</p>
                   <p><strong>Plan:</strong> {sub.plan}</p>
                   <p><strong>Start:</strong> {new Date(sub.start_date).toLocaleDateString()}</p>
-                  <p><strong>End:</strong> {sub.end_date ? new Date(sub.end_date).toLocaleDateString() : "Ongoing"}</p>
+                  <p><strong>End:</strong> {new Date(sub.end_date).toLocaleDateString()}</p>
                   <p><strong>Active:</strong> {sub.is_active ? "Yes" : "No"}</p>
                   <p className="text-xs text-gray-400">Stripe ID: {sub.stripe_subscription_id}</p>
                 </CardContent>
@@ -323,22 +339,27 @@ export default function SubscriptionsPage() {
         </motion.div>
       )}
 
-      {/* Sexy Confirm Dialog */}
+      {/* Delete Confirm */}
       <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-xl">
           <DialogHeader>
             <DialogTitle>Confirm Delete</DialogTitle>
           </DialogHeader>
           <p>Are you sure you want to delete this subscription?</p>
           <div className="flex justify-end space-x-2 mt-4">
-            <Button variant="outline" onClick={() => setIsConfirmOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+            <Button variant="outline" onClick={() => setIsConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Delete
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
     </div>
   )
 }
+
 
 
 // "use client"
