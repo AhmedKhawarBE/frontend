@@ -338,7 +338,6 @@
 // }
 
 
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -346,8 +345,9 @@ import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { ChevronLeft, ChevronRight, Search } from "lucide-react"
+import { ChevronLeft, ChevronRight, Search, X } from "lucide-react"
 import Cookies from "js-cookie"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface Message {
   id: number
@@ -455,7 +455,6 @@ export default function ViewCompanyConversations() {
     .filter(([_, msgs]) => {
       const firstMsg = msgs[0]
       const msgTime = new Date(firstMsg.timestamp).getTime()
-
       if (timeFilter === "day")
         return msgTime >= now.getTime() - 24 * 60 * 60 * 1000
       if (timeFilter === "week")
@@ -484,7 +483,6 @@ export default function ViewCompanyConversations() {
   )
 
   const selectedMessages = selectedSession ? grouped[selectedSession] : null
-  const latestSummary = selectedMessages?.find((m) => m.type === "summary") || null
 
   const formatDuration = (ms: number) => {
     const totalSec = Math.floor(ms / 1000)
@@ -507,163 +505,220 @@ export default function ViewCompanyConversations() {
     )
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-            Company Conversations
-          </h1>
-          <p className="text-gray-600">Fetched live from backend API</p>
+    <div className="flex gap-6 relative">
+      {/* Left: Table */}
+      <div className="flex-1 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+              Company Conversations
+            </h1>
+            <p className="text-gray-600">Fetched live from backend API</p>
+          </div>
+          <div className="text-gray-600 text-sm">
+            Total Sessions: <span className="font-medium">{filteredSessions.length}</span>
+          </div>
         </div>
-        <div className="text-gray-600 text-sm">
-          Total Sessions: <span className="font-medium">{filteredSessions.length}</span>
-        </div>
-      </div>
 
-      {/* Filters + Search */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="flex gap-2">
-          {["all", "day", "week", "month"].map((t) => (
+        {/* Filters + Search */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex gap-2">
+            {["all", "day", "week", "month"].map((t) => (
+              <Button
+                key={t}
+                variant={timeFilter === t ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setTimeFilter(t as any)
+                  setCurrentPage(1)
+                }}
+              >
+                {t === "all"
+                  ? "All"
+                  : t === "day"
+                  ? "Last Day"
+                  : t === "week"
+                  ? "Last Week"
+                  : "Last Month"}
+              </Button>
+            ))}
+          </div>
+
+          <div className="relative max-w-md ml-auto">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search by phone or caller number..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+
+        {/* Table */}
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="border-b">
+            <CardTitle className="text-lg font-semibold text-slate-800">
+              Recent Conversations
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 overflow-x-auto">
+            <table className="min-w-full text-sm text-left">
+              <thead className="bg-slate-100 border-b">
+                <tr>
+                  <th className="px-4 py-2">Phone</th>
+                  <th className="px-4 py-2">Caller</th>
+                  <th className="px-4 py-2">Messages</th>
+                  <th className="px-4 py-2">Started</th>
+                  <th className="px-4 py-2">Duration</th>
+                  <th className="px-4 py-2">Transcript</th>
+                  <th className="px-4 py-2">Summary</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginated.map(([sessionID, msgs]) => {
+                  const sortedMsgs = [...msgs].sort(
+                    (a, b) =>
+                      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+                  )
+                  const startedAt = new Date(sortedMsgs[0].timestamp).toLocaleString()
+                  const startedAtMs = new Date(sortedMsgs[0].timestamp).getTime()
+                  const summaryMsg = sortedMsgs.find((m) => m.type === "summary")
+                  const endedAtMs = summaryMsg
+                    ? new Date(summaryMsg.timestamp).getTime() + 12000
+                    : new Date(sortedMsgs[sortedMsgs.length - 1].timestamp).getTime() + 12000
+                  const callDuration = formatDuration(endedAtMs - startedAtMs)
+                  const lastMsg = sortedMsgs[sortedMsgs.length - 1]
+                  const phoneNumber = lastMsg?.phonenumber || "Unknown"
+                  const callerNumber = lastMsg?.caller_number || "—"
+                  const previewSummary =
+                    summaryMsg?.summary
+                      ?.split(" ")
+                      .slice(0, 4)
+                      .join(" ") + "..." || "No summary"
+
+                  return (
+                    <tr
+                      key={sessionID}
+                      className="border-b hover:bg-slate-50 transition cursor-pointer"
+                    >
+                      <td className="px-4 py-2">{phoneNumber}</td>
+                      <td className="px-4 py-2">{callerNumber}</td>
+                      <td className="px-4 py-2">{msgs.length}</td>
+                      <td className="px-4 py-2">{startedAt}</td>
+                      <td className="px-4 py-2">{callDuration}</td>
+                      <td
+                        className="px-4 py-2 text-blue-600"
+                        onClick={() => {
+                          setSelectedSession(sessionID)
+                          setViewType("transcript")
+                        }}
+                      >
+                        View
+                      </td>
+                      <td
+                        className="px-4 py-2 text-blue-600"
+                        onClick={() => {
+                          setSelectedSession(sessionID)
+                          setViewType("summary")
+                        }}
+                      >
+                        {previewSummary}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+
+        {/* Pagination */}
+        <div className="flex justify-center items-center gap-2 mt-4 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+          >
+            <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+          </Button>
+
+          {[...Array(totalPages)].map((_, i) => (
             <Button
-              key={t}
-              variant={timeFilter === t ? "default" : "outline"}
+              key={i}
+              variant={currentPage === i + 1 ? "default" : "outline"}
               size="sm"
-              onClick={() => {
-                setTimeFilter(t as any)
-                setCurrentPage(1)
-              }}
+              onClick={() => setCurrentPage(i + 1)}
             >
-              {t === "all"
-                ? "All"
-                : t === "day"
-                ? "Last Day"
-                : t === "week"
-                ? "Last Week"
-                : "Last Month"}
+              {i + 1}
             </Button>
           ))}
-        </div>
 
-        <div className="relative max-w-md ml-auto">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Search by phone or caller number..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </div>
-
-      {/* Table */}
-      <Card className="shadow-sm border-slate-200">
-        <CardHeader className="border-b">
-          <CardTitle className="text-lg font-semibold text-slate-800">
-            Recent Conversations
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
-          <table className="min-w-full text-sm text-left">
-            <thead className="bg-slate-100 border-b">
-              <tr>
-                <th className="px-4 py-2">Phone</th>
-                <th className="px-4 py-2">Caller</th>
-                <th className="px-4 py-2">Messages</th>
-                <th className="px-4 py-2">Started</th>
-                <th className="px-4 py-2">Duration</th>
-                <th className="px-4 py-2">Transcript</th>
-                <th className="px-4 py-2">Summary</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginated.map(([sessionID, msgs]) => {
-                const sortedMsgs = [...msgs].sort(
-                  (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-                )
-                const startedAt = new Date(sortedMsgs[0].timestamp).toLocaleString()
-                const startedAtMs = new Date(sortedMsgs[0].timestamp).getTime()
-                const summaryMsg = sortedMsgs.find((m) => m.type === "summary")
-                const endedAtMs = summaryMsg
-                  ? new Date(summaryMsg.timestamp).getTime() + 12000
-                  : new Date(sortedMsgs[sortedMsgs.length - 1].timestamp).getTime() + 12000
-                const callDuration = formatDuration(endedAtMs - startedAtMs)
-                const lastMsg = sortedMsgs[sortedMsgs.length - 1]
-                const phoneNumber = lastMsg?.phonenumber || "Unknown"
-                const callerNumber = lastMsg?.caller_number || "—"
-                const previewSummary =
-                  summaryMsg?.summary
-                    ?.split(" ")
-                    .slice(0, 4)
-                    .join(" ") + "..." || "No summary"
-
-                return (
-                  <tr
-                    key={sessionID}
-                    className="border-b hover:bg-slate-50 transition cursor-pointer"
-                  >
-                    <td className="px-4 py-2">{phoneNumber}</td>
-                    <td className="px-4 py-2">{callerNumber}</td>
-                    <td className="px-4 py-2">{msgs.length}</td>
-                    <td className="px-4 py-2">{startedAt}</td>
-                    <td className="px-4 py-2">{callDuration}</td>
-                    <td
-                      className="px-4 py-2 text-blue-600"
-                      onClick={() => {
-                        setSelectedSession(sessionID)
-                        setViewType("transcript")
-                      }}
-                    >
-                      View
-                    </td>
-                    <td
-                      className="px-4 py-2 text-blue-600"
-                      onClick={() => {
-                        setSelectedSession(sessionID)
-                        setViewType("summary")
-                      }}
-                    >
-                      {previewSummary}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
-
-      {/* Pagination with Jump */}
-      <div className="flex justify-center items-center gap-2 mt-4 flex-wrap">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={currentPage === 1}
-          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-        >
-          <ChevronLeft className="w-4 h-4 mr-1" /> Prev
-        </Button>
-
-        {[...Array(totalPages)].map((_, i) => (
           <Button
-            key={i}
-            variant={currentPage === i + 1 ? "default" : "outline"}
+            variant="outline"
             size="sm"
-            onClick={() => setCurrentPage(i + 1)}
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
           >
-            {i + 1}
+            Next <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
-        ))}
-
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={currentPage === totalPages}
-          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-        >
-          Next <ChevronRight className="w-4 h-4 ml-1" />
-        </Button>
+        </div>
       </div>
+
+      {/* Right: Transcript/Summary Drawer */}
+      {selectedSession && (
+        <div className="fixed top-0 right-0 w-[420px] h-full bg-white shadow-lg border-l z-50 flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b bg-slate-50">
+            <h2 className="font-semibold text-slate-800">
+              {viewType === "transcript" ? "Call Transcript" : "Summary"}
+            </h2>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setSelectedSession(null)
+                setViewType(null)
+              }}
+            >
+              <X className="h-5 w-5 text-slate-600" />
+            </Button>
+          </div>
+
+          <ScrollArea className="flex-1 p-4">
+            {viewType === "transcript" ? (
+  selectedMessages
+    ?.filter(
+      (m) =>
+        m.user_question?.trim() !== "" ||
+        m.assistant_response?.trim() !== ""
+    )
+    .map((m) => (
+      <div key={m.id} className="mb-4">
+        {m.user_question?.trim() && (
+          <p className="text-sm font-semibold text-gray-700">
+            User: <span className="font-normal">{m.user_question}</span>
+          </p>
+        )}
+        {m.assistant_response?.trim() && (
+          <p className="text-sm text-gray-600 mt-1">
+            AI: <span className="font-normal">{m.assistant_response}</span>
+          </p>
+        )}
+        <hr className="my-2" />
+      </div>
+    ))
+) : (
+  <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">
+    {selectedMessages?.find((m) => m.type === "summary")?.summary ||
+      "No summary available."}
+  </div>
+)}
+
+
+          </ScrollArea>
+        </div>
+      )}
     </div>
   )
 }
