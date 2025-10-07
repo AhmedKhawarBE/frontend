@@ -115,6 +115,7 @@ interface CompanyUsage {
   company: number
   current_agents: number
   current_minutes_used: number
+  remaining_minutes: number  
   last_reset: string
   extra_minutes: number
   extra_cost: number
@@ -173,6 +174,8 @@ export default function BillingPage() {
         setUsage(await usageRes.json())
         setPlans(await plansRes.json())
         setSubscriptions(await subsRes.json())
+
+        
       } catch (err: any) {
         setError(err.message)
       } finally {
@@ -268,6 +271,20 @@ export default function BillingPage() {
                 <p className="text-sm text-gray-500">Minutes Used</p>
                 <p className="text-xl font-bold">{usage.current_minutes_used}</p>
               </div>
+
+              {/* 🆕 Remaining Minutes Card */}
+              <div className="p-4 rounded-lg bg-gray-50 shadow-sm">
+                <p className="text-sm text-gray-500">Remaining Minutes</p>
+                <p
+                  className={`text-xl font-bold ${
+                    usage.remaining_minutes < 50 ? "text-red-600" : "text-green-600"
+                  }`}
+                >
+                  {usage.remaining_minutes}
+                </p>
+
+              </div>
+
               <div className="p-4 rounded-lg bg-gray-50 shadow-sm">
                 <p className="text-sm text-gray-500">Extra Minutes</p>
                 <p className="text-xl font-bold">{usage.extra_minutes}</p>
@@ -286,6 +303,7 @@ export default function BillingPage() {
               </div>
             </div>
           </CardContent>
+
         </Card>
       </motion.div>
     </div>
