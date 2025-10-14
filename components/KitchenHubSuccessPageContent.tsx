@@ -38,49 +38,33 @@ export default function KitchenHubSuccessPage() {
   const { toast } = useToast()
   const [loading, setLoading] = useState<string | null>(null)
     console.log({connectionId, token, companyId})
-  const handleConnect = async (crmName: string) => {
-    setLoading(crmName)
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/kitchenhub/oauth/callback/${encodeURIComponent(
-          connectionId || ""
-        )}/${encodeURIComponent(companyId || "")}/`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Token ${token}`,
-          },
-        }
-      )
-
-      const responseText = await res.text()
-      console.log(responseText)
-
-      if (res.ok) {
-        toast({
-          title: `${crmName} Connected 🎉`,
-          description: "Integration completed successfully.",
-          duration: 4000,
-        })
-      } else {
-        toast({
-          title: `Failed to connect ${crmName}`,
-          description: "An error occurred while connecting.",
-          variant: "destructive",
-        })
-      }
-    } catch (err) {
-      console.error(err)
-      toast({
-        title: "Network Error",
-        description: "Something went wrong while connecting.",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(null)
-    }
+  const handleConnect = (crmName: string) => {
+  if (!connectionId || !companyId) {
+    toast({
+      title: "Missing Parameters",
+      description: "Connection ID or Company ID missing in URL.",
+      variant: "destructive",
+    })
+    return
   }
+
+  setLoading(crmName)
+
+  try {
+    window.location.href = `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/kitchenhub/oauth/callback/${encodeURIComponent(
+      connectionId || ""
+    )}/${encodeURIComponent(companyId || "")}/`
+  } catch (error) {
+    console.error(error)
+    toast({
+      title: "Redirect Error",
+      description: "Could not redirect to KitchenHub.",
+      variant: "destructive",
+    })
+  } finally {
+    setLoading(null)
+  }
+}
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white text-gray-900 px-6 py-16">
