@@ -1,139 +1,143 @@
 // "use client"
 
+// import { useEffect, useState } from "react"
 // import { useParams } from "next/navigation"
-// import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+// import Cookies from "js-cookie"
+// import {
+//   Card,
+//   CardContent,
+//   CardDescription,
+//   CardHeader,
+//   CardTitle,
+// } from "@/components/ui/card"
 // import { Badge } from "@/components/ui/badge"
-// import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-// import { ExternalLink, CheckCircle, XCircle, Clock } from "lucide-react"
+// import {
+//   Table,
+//   TableBody,
+//   TableCell,
+//   TableHead,
+//   TableHeader,
+//   TableRow,
+// } from "@/components/ui/table"
+// import { CheckCircle } from "lucide-react"
+// import { useToast } from "@/hooks/use-toast"
+
+// const integrationKeyMap: Record<string, string> = {
+//   "leadconnector (ghl) v2 - standard": "GHL Standard",
+//   "leadconnector (ghl) v2 - whitelabel": "GHL Whitelabel",
+//   hubspot: "HubSpot",
+//   google: "Google",
+//   "microsoft - delegated": "Microsoft (Delegated)",
+//   "microsoft - admin": "Microsoft (Admin)",
+//   salesforce: "Salesforce",
+//   accesse11: "Accesse11",
+//   clover: "Clover",
+// }
+
+// interface Integration {
+//   key: string
+//   name: string
+//   type: string
+//   status: string
+//   lastSync?: string | null
+// }
 
 // export default function ViewCompanyIntegrations() {
-//   const params = useParams()
-//   const companyId = params.id
+//   const { id } = useParams()
+//   const [integrations, setIntegrations] = useState<Integration[]>([])
+//   const [loading, setLoading] = useState(true)
+//   const { toast } = useToast()
 
-//   const integrations = [
-//     {
-//       id: 1,
-//       name: "Slack",
-//       type: "Communication",
-//       status: "Connected",
-//       description: "Team communication and notifications",
-//       lastSync: "2024-07-14 10:30",
-//       enabled: true,
-//     },
-//     {
-//       id: 2,
-//       name: "Salesforce",
-//       type: "CRM",
-//       status: "Not Connected",
-//       description: "Customer relationship management",
-//       lastSync: null,
-//       enabled: false,
-//     },
-//     {
-//       id: 3,
-//       name: "Zendesk",
-//       type: "Support",
-//       status: "Connected",
-//       description: "Customer support ticketing system",
-//       lastSync: "2024-07-14 09:15",
-//       enabled: true,
-//     },
-//     {
-//       id: 4,
-//       name: "Google Analytics",
-//       type: "Analytics",
-//       status: "Connected",
-//       description: "Website analytics and tracking",
-//       lastSync: "2024-07-14 11:00",
-//       enabled: true,
-//     },
-//     {
-//       id: 5,
-//       name: "Stripe",
-//       type: "Payment",
-//       status: "Not Connected",
-//       description: "Payment processing and billing",
-//       lastSync: null,
-//       enabled: false,
-//     },
-//   ]
+//   useEffect(() => {
+//     const fetchIntegrations = async () => {
+//       try {
+//         const res = await fetch(
+//           `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/crm-integrations/`,
+//           {
+//             headers: {
+//               "Content-Type": "application/json",
+//               Authorization: `Token ${Cookies.get("adminToken") || ""}`,
+//             },
+//           }
+//         )
 
-//   const getStatusColor = (status: string) => {
-//     switch (status) {
-//       case "Connected":
-//         return "default"
-//       case "Not Connected":
-//         return "secondary"
-//       case "Error":
-//         return "destructive"
-//       default:
-//         return "outline"
+//         if (!res.ok) throw new Error("Failed to fetch integrations")
+//         const data = await res.json()
+
+//         // ✅ Filter only connected integrations
+//         const connected = data
+//           .filter((item: any) => item.status === "active")
+//           .map((item: any) => ({
+//             key: item.crm_type,
+//             name:
+//               integrationKeyMap[item.crm_type.toLowerCase()] ||
+//               item.crm_type.toUpperCase(),
+//             type: item.crm_type.includes("microsoft")
+//               ? "Email/Calendar"
+//               : item.crm_type.includes("leadconnector")
+//               ? "Communication"
+//               : "CRM",
+//             status: "Connected",
+//             lastSync: item.last_sync || null,
+//           }))
+
+//         setIntegrations(connected)
+//       } catch (error) {
+//         console.error("Integration fetch error:", error)
+//         toast({
+//           description: "Failed to load integrations.",
+//           variant: "destructive",
+//         })
+//       } finally {
+//         setLoading(false)
+//       }
 //     }
-//   }
 
-//   const getStatusIcon = (status: string) => {
-//     switch (status) {
-//       case "Connected":
-//         return <CheckCircle className="h-4 w-4 text-green-600" />
-//       case "Not Connected":
-//         return <XCircle className="h-4 w-4 text-gray-400" />
-//       case "Error":
-//         return <XCircle className="h-4 w-4 text-red-600" />
-//       default:
-//         return <Clock className="h-4 w-4 text-yellow-600" />
-//     }
-//   }
+//     fetchIntegrations()
+//   }, [id])
 
-//   const connectedCount = integrations.filter((i) => i.status === "Connected").length
-//   const availableCount = integrations.filter((i) => i.status === "Not Connected").length
-//   const activeCount = integrations.filter((i) => i.enabled).length
-//   const errorCount = integrations.filter((i) => i.status === "Error").length
+//   if (loading)
+//     return (
+//       <div className="flex items-center justify-center h-64 text-gray-500">
+//         Loading connected integrations...
+//       </div>
+//     )
+
+//   if (integrations.length === 0)
+//     return (
+//       <div className="p-10 text-center text-gray-500 border rounded-lg bg-gray-50">
+//         No active integrations found.
+//       </div>
+//     )
 
 //   return (
-//     <div className="space-y-6">
-//       <div className="flex items-center justify-between">
-//         <div>
-//           <h2 className="text-2xl font-bold text-gray-900">Integrations</h2>
-//           <p className="text-gray-600 mt-1">View external service integrations</p>
-//         </div>
-//         <div className="text-sm text-gray-600">
-//           Connected: <span className="font-medium">{connectedCount}</span> / {integrations.length}
-//         </div>
+//     <div className="space-y-6 animate-fadeIn">
+//       {/* Header */}
+//       <div>
+//         <h2 className="text-2xl font-bold text-gray-900">Connected Integrations</h2>
+//         <p className="text-gray-600 mt-1">
+//           These are the integrations currently connected to this company.
+//         </p>
 //       </div>
 
-//       {/* Integration Stats */}
-//       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-//         <Card>
-//           <CardContent className="p-4 text-center">
-//             <div className="text-2xl font-bold text-blue-600">{connectedCount}</div>
-//             <div className="text-sm text-gray-600">Connected</div>
-//           </CardContent>
-//         </Card>
-//         <Card>
-//           <CardContent className="p-4 text-center">
-//             <div className="text-2xl font-bold text-gray-400">{availableCount}</div>
-//             <div className="text-sm text-gray-600">Available</div>
-//           </CardContent>
-//         </Card>
-//         <Card>
-//           <CardContent className="p-4 text-center">
-//             <div className="text-2xl font-bold text-green-600">{activeCount}</div>
-//             <div className="text-sm text-gray-600">Active</div>
-//           </CardContent>
-//         </Card>
-//         <Card>
-//           <CardContent className="p-4 text-center">
-//             <div className="text-2xl font-bold text-red-600">{errorCount}</div>
-//             <div className="text-sm text-gray-600">Errors</div>
-//           </CardContent>
-//         </Card>
-//       </div>
+//       {/* Summary Card */}
+//       <Card className="shadow-sm border-gray-200">
+//         <CardContent className="p-5 flex justify-between items-center">
+//           <div>
+//             <div className="text-2xl font-bold text-green-600">
+//               {integrations.length}
+//             </div>
+//             <div className="text-sm text-gray-600">Active Connections</div>
+//           </div>
+//           <CheckCircle className="h-8 w-8 text-green-600" />
+//         </CardContent>
+//       </Card>
 
-//       {/* Integrations Table */}
-//       <Card>
+//       {/* Table */}
+//       <Card className="border border-gray-200 shadow-sm">
 //         <CardHeader>
-//           <CardTitle>Integration Status</CardTitle>
-//           <CardDescription>Current status of external service integrations</CardDescription>
+//           <CardTitle>Integration Details</CardTitle>
+//           <CardDescription>Live connected services</CardDescription>
 //         </CardHeader>
 //         <CardContent>
 //           <Table>
@@ -143,38 +147,26 @@
 //                 <TableHead>Type</TableHead>
 //                 <TableHead>Status</TableHead>
 //                 <TableHead>Last Sync</TableHead>
-//                 <TableHead>Enabled</TableHead>
 //               </TableRow>
 //             </TableHeader>
 //             <TableBody>
-//               {integrations.map((integration) => (
-//                 <TableRow key={integration.id}>
-//                   <TableCell>
-//                     <div className="flex items-center space-x-3">
-//                       {getStatusIcon(integration.status)}
-//                       <div>
-//                         <div className="font-medium">{integration.name}</div>
-//                         <div className="text-sm text-gray-500">{integration.description}</div>
-//                       </div>
-//                     </div>
+//               {integrations.map((integration, index) => (
+//                 <TableRow key={index}>
+//                   <TableCell className="font-medium text-gray-900">
+//                     {integration.name}
 //                   </TableCell>
+//                   <TableCell>{integration.type}</TableCell>
 //                   <TableCell>
-//                     <Badge variant="outline">{integration.type}</Badge>
-//                   </TableCell>
-//                   <TableCell>
-//                     <Badge variant={getStatusColor(integration.status)}>{integration.status}</Badge>
+//                     <Badge variant="default">Connected</Badge>
 //                   </TableCell>
 //                   <TableCell>
 //                     {integration.lastSync ? (
-//                       <span className="text-sm">{integration.lastSync}</span>
+//                       <span className="text-sm text-gray-700">
+//                         {integration.lastSync}
+//                       </span>
 //                     ) : (
 //                       <span className="text-sm text-gray-400">Never</span>
 //                     )}
-//                   </TableCell>
-//                   <TableCell>
-//                     <Badge variant={integration.enabled ? "default" : "secondary"}>
-//                       {integration.enabled ? "Yes" : "No"}
-//                     </Badge>
 //                   </TableCell>
 //                 </TableRow>
 //               ))}
@@ -182,71 +174,9 @@
 //           </Table>
 //         </CardContent>
 //       </Card>
-
-//       {/* Integration Details */}
-//       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-//         <Card>
-//           <CardHeader>
-//             <CardTitle>API Configuration</CardTitle>
-//             <CardDescription>Current API settings</CardDescription>
-//           </CardHeader>
-//           <CardContent className="space-y-4">
-//             <div className="space-y-2">
-//               <h4 className="font-medium text-gray-700">API Key</h4>
-//               <p className="text-sm text-gray-600 font-mono">sk-...****</p>
-//             </div>
-//             <div className="space-y-2">
-//               <h4 className="font-medium text-gray-700">Webhook URL</h4>
-//               <div className="flex items-center space-x-2">
-//                 <p className="text-sm text-gray-600 font-mono">https://smartconvo.com/webhook/company-1</p>
-//                 <ExternalLink className="h-4 w-4 text-gray-400" />
-//               </div>
-//             </div>
-//             <div className="space-y-2">
-//               <h4 className="font-medium text-gray-700">Rate Limit</h4>
-//               <p className="text-sm text-gray-600">100 requests/minute</p>
-//             </div>
-//           </CardContent>
-//         </Card>
-
-//         <Card>
-//           <CardHeader>
-//             <CardTitle>Sync Settings</CardTitle>
-//             <CardDescription>Data synchronization preferences</CardDescription>
-//           </CardHeader>
-//           <CardContent className="space-y-4">
-//             <div className="flex items-center justify-between">
-//               <div>
-//                 <h4 className="font-medium text-gray-700">Auto Sync</h4>
-//                 <p className="text-sm text-gray-600">Automatically sync data every hour</p>
-//               </div>
-//               <Badge variant="default">Enabled</Badge>
-//             </div>
-//             <div className="flex items-center justify-between">
-//               <div>
-//                 <h4 className="font-medium text-gray-700">Real-time Updates</h4>
-//                 <p className="text-sm text-gray-600">Receive real-time notifications</p>
-//               </div>
-//               <Badge variant="default">Enabled</Badge>
-//             </div>
-//             <div className="flex items-center justify-between">
-//               <div>
-//                 <h4 className="font-medium text-gray-700">Data Backup</h4>
-//                 <p className="text-sm text-gray-600">Backup integration data daily</p>
-//               </div>
-//               <Badge variant="secondary">Disabled</Badge>
-//             </div>
-//             <div className="space-y-2">
-//               <h4 className="font-medium text-gray-700">Sync Frequency</h4>
-//               <p className="text-sm text-gray-600">Every hour</p>
-//             </div>
-//           </CardContent>
-//         </Card>
-//       </div>
 //     </div>
 //   )
 // }
-
 
 
 "use client"
@@ -262,169 +192,162 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { CheckCircle } from "lucide-react"
+import { CheckCircle2, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
-const integrationKeyMap: Record<string, string> = {
+// 🔹 Integration display name mapping
+const integrationDisplayNames: Record<string, string> = {
+  square: "Square",
+  clover: "Clover",
+  accesse11: "Accesse11",
+  hubspot: "HubSpot",
+  salesforce: "Salesforce",
+  google: "Google",
   "leadconnector (ghl) v2 - standard": "GHL Standard",
   "leadconnector (ghl) v2 - whitelabel": "GHL Whitelabel",
-  hubspot: "HubSpot",
-  google: "Google",
   "microsoft - delegated": "Microsoft (Delegated)",
   "microsoft - admin": "Microsoft (Admin)",
-  salesforce: "Salesforce",
-  accesse11: "Accesse11",
-  clover: "Clover",
 }
 
-interface Integration {
-  key: string
-  name: string
-  type: string
-  status: string
-  lastSync?: string | null
+// 🔹 API call from Code B
+async function fetchCompanyIntegrations(companyId: string) {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/crm-integrations/connected-status/?company_id=${companyId}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Token ${Cookies.get("adminToken") || ""}`,
+        },
+      }
+    )
+
+    if (!res.ok) throw new Error("Failed to fetch integration status")
+    const data = await res.json()
+  console.log(data)
+    return data
+  } catch (err) {
+    console.error(err)
+    return null
+  }
 }
 
 export default function ViewCompanyIntegrations() {
   const { id } = useParams()
-  const [integrations, setIntegrations] = useState<Integration[]>([])
+  const [integrationStatus, setIntegrationStatus] = useState<Record<string, boolean> | null>(null)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
   useEffect(() => {
-    const fetchIntegrations = async () => {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/crm-integrations/`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Token ${Cookies.get("adminToken") || ""}`,
-            },
-          }
-        )
+    if (!id) return
 
-        if (!res.ok) throw new Error("Failed to fetch integrations")
-        const data = await res.json()
+    const loadIntegrations = async () => {
+      setLoading(true)
+      const data = await fetchCompanyIntegrations(id as string)
 
-        // ✅ Filter only connected integrations
-        const connected = data
-          .filter((item: any) => item.status === "active")
-          .map((item: any) => ({
-            key: item.crm_type,
-            name:
-              integrationKeyMap[item.crm_type.toLowerCase()] ||
-              item.crm_type.toUpperCase(),
-            type: item.crm_type.includes("microsoft")
-              ? "Email/Calendar"
-              : item.crm_type.includes("leadconnector")
-              ? "Communication"
-              : "CRM",
-            status: "Connected",
-            lastSync: item.last_sync || null,
-          }))
-
-        setIntegrations(connected)
-      } catch (error) {
-        console.error("Integration fetch error:", error)
+      if (!data) {
         toast({
           description: "Failed to load integrations.",
           variant: "destructive",
         })
-      } finally {
-        setLoading(false)
+      } else {
+        setIntegrationStatus(data.integrations || data) // handle both formats
       }
+
+      setLoading(false)
     }
 
-    fetchIntegrations()
+    loadIntegrations()
   }, [id])
 
   if (loading)
     return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
-        Loading connected integrations...
+      <div className="flex items-center justify-center h-64 text-gray-500 animate-pulse">
+        Loading integration data...
       </div>
     )
 
-  if (integrations.length === 0)
+  if (!integrationStatus)
     return (
       <div className="p-10 text-center text-gray-500 border rounded-lg bg-gray-50">
-        No active integrations found.
+        Unable to fetch integration data.
       </div>
     )
 
+  const connectedCount = Object.values(integrationStatus).filter(Boolean).length
+  const totalCount = Object.keys(integrationStatus).length
+
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-8 animate-fadeIn">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Connected Integrations</h2>
+        <h2 className="text-3xl font-semibold text-gray-900 tracking-tight">
+          Connected Integrations
+        </h2>
         <p className="text-gray-600 mt-1">
-          These are the integrations currently connected to this company.
+          Overview of all CRMs linked with this company’s account.
         </p>
       </div>
 
-      {/* Summary Card */}
-      <Card className="shadow-sm border-gray-200">
-        <CardContent className="p-5 flex justify-between items-center">
+      {/* Summary Stats */}
+      <Card className="border-gray-200 shadow-sm hover:shadow-md transition">
+        <CardContent className="flex justify-between items-center p-6">
           <div>
-            <div className="text-2xl font-bold text-green-600">
-              {integrations.length}
+            <div className="text-3xl font-bold text-green-600">
+              {connectedCount}
             </div>
-            <div className="text-sm text-gray-600">Active Connections</div>
+            <div className="text-sm text-gray-600">
+              Active {connectedCount === 1 ? "Connection" : "Connections"} out of {totalCount}
+            </div>
           </div>
-          <CheckCircle className="h-8 w-8 text-green-600" />
+          <CheckCircle2 className="h-10 w-10 text-green-600" />
         </CardContent>
       </Card>
 
-      {/* Table */}
-      <Card className="border border-gray-200 shadow-sm">
-        <CardHeader>
-          <CardTitle>Integration Details</CardTitle>
-          <CardDescription>Live connected services</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Service</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Sync</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {integrations.map((integration, index) => (
-                <TableRow key={index}>
-                  <TableCell className="font-medium text-gray-900">
-                    {integration.name}
-                  </TableCell>
-                  <TableCell>{integration.type}</TableCell>
-                  <TableCell>
-                    <Badge variant="default">Connected</Badge>
-                  </TableCell>
-                  <TableCell>
-                    {integration.lastSync ? (
-                      <span className="text-sm text-gray-700">
-                        {integration.lastSync}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-400">Never</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* Integrations Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {Object.entries(integrationStatus).map(([key, isConnected]) => {
+          const displayName =
+            integrationDisplayNames[key.toLowerCase()] || key.toUpperCase()
+
+          return (
+            <Card
+              key={key}
+              className={`transition border ${
+                isConnected
+                  ? "border-green-200 hover:border-green-400 hover:shadow-lg"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-lg font-semibold text-gray-800">
+                  {displayName}
+                </CardTitle>
+                {isConnected ? (
+                  <CheckCircle2 className="h-6 w-6 text-green-600" />
+                ) : (
+                  <XCircle className="h-6 w-6 text-gray-400" />
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <Badge variant={isConnected ? "default" : "outline"}>
+                    {isConnected ? "Connected" : "Not Connected"}
+                  </Badge>
+                  <span
+                    className={`text-sm ${
+                      isConnected ? "text-green-600" : "text-gray-500"
+                    }`}
+                  >
+                    {isConnected ? "Active" : "Inactive"}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
     </div>
   )
 }

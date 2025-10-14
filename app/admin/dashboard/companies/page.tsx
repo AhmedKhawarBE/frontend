@@ -32,9 +32,9 @@ export default function CompaniesPage() {
         if (Array.isArray(data)) {
           setCompanies(data)
         } else if (Array.isArray(data.results)) {
-  // paginated response (DRF style)
-  setCompanies(data.results)
-} else {
+          // paginated response (DRF style)
+          setCompanies(data.results)
+        } else {
           console.error("Invalid companies response format", data)
         }
       } catch (err) {
@@ -109,11 +109,10 @@ export default function CompaniesPage() {
     : []
   
   const categories = [
-  "all",
-  ...Array.from(new Set(companies.map((c) => c.category).filter(Boolean)))
-]
+    "all",
+    ...Array.from(new Set(companies.map((c) => c.category).filter(Boolean)))
+  ]
 
-  //const categories = ["all", ...Array.from(new Set(Array.isArray(companies) ? companies.map((c) => c.category) : []))]
   const activeOrinactive = filteredCompanies.filter((c) => c.status === "active" || c.status === "inactive")
   const pending = filteredCompanies.filter((c) => c.status === "pending")
 
@@ -132,7 +131,9 @@ export default function CompaniesPage() {
             <h3 className="font-semibold text-lg">{company.name}</h3>
             <p className="text-sm text-gray-500">{company.category}</p>
           </div>
-          <div className="flex items-center space-x-2">
+
+          {/* 👇 FIXED TEXT OVERFLOW HERE */}
+          <div className="flex items-center space-x-2 max-w-full overflow-hidden">
             <Badge
               variant={
                 company.status === "active"
@@ -144,8 +145,12 @@ export default function CompaniesPage() {
             >
               {company.status}
             </Badge>
-            <span className="text-xs text-gray-500">{company.users} users</span>
+            <span className="text-xs text-gray-500 truncate" title={`${company.users?.length || 0} users`}>
+              {company.users?.length || 0} users
+            </span>
+
           </div>
+
           <div className="text-xs text-gray-400">
             Added: {new Date(company.created_at).toLocaleDateString()}
           </div>
@@ -236,17 +241,14 @@ export default function CompaniesPage() {
         </Select>
         <Select value={filterCategory} onValueChange={setFilterCategory}>
           <SelectTrigger className="w-48">
-
-        
             <SelectValue placeholder="Filter by Category" />
           </SelectTrigger>
           <SelectContent>
             {categories.map((category, idx) => (
-  <SelectItem key={`${category}-${idx}`} value={category}>
-    {category === "all" ? "All Categories" : category}
-  </SelectItem>
-))}
-
+              <SelectItem key={`${category}-${idx}`} value={category}>
+                {category === "all" ? "All Categories" : category}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

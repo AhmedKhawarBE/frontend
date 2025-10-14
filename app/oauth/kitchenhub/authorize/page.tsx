@@ -25,9 +25,9 @@ export default function KitchenHubAuthorizePage() {
   const { toast } = useToast()
   const { login } = useAuth()
 
-  const state = searchParams.get("state")
+  // ✅ Accept either connection_id or state for flexibility
+  const connectionId = searchParams.get("connection_id") || searchParams.get("state")
 
-  // ✅ Load Google reCAPTCHA script
   useEffect(() => {
     const script = document.createElement("script")
     script.src = "https://www.google.com/recaptcha/api.js"
@@ -36,7 +36,7 @@ export default function KitchenHubAuthorizePage() {
     document.body.appendChild(script)
   }, [])
 
-  // ✅ Handle main login (same as company login)
+  // ✅ Handle main login
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const captchaToken = (window as any).grecaptcha?.getResponse()
@@ -53,7 +53,7 @@ export default function KitchenHubAuthorizePage() {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/login/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, captcha_token: captchaToken, state }),
+        body: JSON.stringify({ email, password, captcha_token: captchaToken, connection_id: connectionId }),
       })
 
       const data = await response.json()
@@ -69,11 +69,11 @@ export default function KitchenHubAuthorizePage() {
         throw new Error(data?.message || "Login failed")
       }
 
-      // ✅ Store token + redirect back to KitchenHub
+      // ✅ Redirect back with connection_id instead of state
       Cookies.set("Token", data.token, { expires: 7 })
       login({ email, name: data.name || "Company User", type: "company" })
       toast({ title: "Authorized", description: "Redirecting to KitchenHub..." })
-      router.push(`/oauth/kitchenhub/success?state=${state}&token=${data.token}&id=${data.id}`)
+      router.push(`/oauth/kitchenhub/success?connection_id=${connectionId}&token=${data.token}&id=${data.id}`)
 
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" })
@@ -82,7 +82,7 @@ export default function KitchenHubAuthorizePage() {
     }
   }
 
-  // ✅ Handle 2FA verification (same as company)
+  // ✅ Handle 2FA verification
   const handle2FAVerification = async () => {
     setVerifying2FA(true)
     const tempToken = Cookies.get("TempToken")
@@ -109,7 +109,7 @@ export default function KitchenHubAuthorizePage() {
           password,
           captcha_token: captchaToken,
           token: twoFACode,
-          state,
+          connection_id: connectionId,
         }),
       })
 
@@ -120,13 +120,14 @@ export default function KitchenHubAuthorizePage() {
       Cookies.remove("TempToken")
       login({ email, name: data.name || "Company User", type: "company" })
       toast({ title: "2FA Success", description: "Redirecting to KitchenHub..." })
-      router.push(`/oauth/kitchenhub/success?state=${state}&token=${data.token}&id=${data.id}`)
+      router.push(`/oauth/kitchenhub/success?connection_id=${connectionId}&token=${data.token}&id=${data.id}`)
     } catch (err: any) {
       toast({ title: "2FA Error", description: err.message, variant: "destructive" })
     } finally {
       setVerifying2FA(false)
     }
   }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
