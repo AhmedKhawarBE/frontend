@@ -30,34 +30,33 @@ const CRMS = [
   },
 ]
 
-
 export default function KitchenHubSuccessPage() {
   const params = useSearchParams()
-  const state = params.get("state")
+  const connectionId = params.get("connection_id") 
   const token = params.get("token")
   const companyId = params.get("id")
   const { toast } = useToast()
-
   const [loading, setLoading] = useState<string | null>(null)
-
+    console.log({connectionId, token, companyId})
   const handleConnect = async (crmName: string) => {
     setLoading(crmName)
     try {
-       const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/kitchenhub/oauth/callback/${encodeURIComponent(
-        state || ""
-      )}/${encodeURIComponent(companyId || "")}/`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Token ${token}`,
-        },
-      }
-    )
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/kitchenhub/oauth/callback/${encodeURIComponent(
+          connectionId || ""
+        )}/${encodeURIComponent(companyId || "")}/`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Token ${token}`,
+          },
+        }
+      )
 
       const responseText = await res.text()
       console.log(responseText)
+
       if (res.ok) {
         toast({
           title: `${crmName} Connected 🎉`,
@@ -65,10 +64,9 @@ export default function KitchenHubSuccessPage() {
           duration: 4000,
         })
       } else {
-        console.log(responseText)
         toast({
           title: `Failed to connect ${crmName}`,
-          description: "An error occurred.",
+          description: "An error occurred while connecting.",
           variant: "destructive",
         })
       }
@@ -119,16 +117,16 @@ export default function KitchenHubSuccessPage() {
             <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 rounded-2xl h-full flex flex-col justify-between">
               <CardHeader className="flex flex-col items-center justify-center text-center space-y-4 pt-8">
                 <div className="bg-gray-50 rounded-xl overflow-hidden w-28 h-28 flex items-center justify-center shadow-sm">
-                    <img
-                        src={crm.logo}
-                        alt={crm.name}
-                        className="w-full h-full object-cover" // full coverage for cinematic look
-                        onError={(e) =>
-                        ((e.target as HTMLImageElement).src =
-                            "https://via.placeholder.com/150x150?text=CRM")
-                        }
-                    />
-                    </div>
+                  <img
+                    src={crm.logo}
+                    alt={crm.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) =>
+                      ((e.target as HTMLImageElement).src =
+                        "https://via.placeholder.com/150x150?text=CRM")
+                    }
+                  />
+                </div>
 
                 <CardTitle className="text-lg font-semibold text-gray-900">
                   {crm.name}
@@ -157,7 +155,8 @@ export default function KitchenHubSuccessPage() {
         transition={{ delay: 1 }}
         className="mt-16 text-sm text-gray-400"
       >
-        Securely powered by <span className="font-medium text-gray-700">SmartConvo × KitchenHub</span>
+        Securely powered by{" "}
+        <span className="font-medium text-gray-700">SmartConvo × KitchenHub</span>
       </motion.p>
     </div>
   )

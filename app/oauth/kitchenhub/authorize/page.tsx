@@ -25,8 +25,8 @@ export default function KitchenHubAuthorizePage() {
   const { toast } = useToast()
   const { login } = useAuth()
 
-  // ✅ Accept either connection_id or state for flexibility
-  const connectionId = searchParams.get("connection_id") || searchParams.get("state")
+  // ✅ Only use connection_id from URL
+  const connectionId = searchParams.get("connection_id")
 
   useEffect(() => {
     const script = document.createElement("script")
@@ -42,7 +42,20 @@ export default function KitchenHubAuthorizePage() {
     const captchaToken = (window as any).grecaptcha?.getResponse()
 
     if (!captchaToken) {
-      toast({ title: "CAPTCHA required", description: "Please verify you're human.", variant: "destructive" })
+      toast({
+        title: "CAPTCHA required",
+        description: "Please verify you're human.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!connectionId) {
+      toast({
+        title: "Missing connection ID",
+        description: "Authorization link is invalid.",
+        variant: "destructive",
+      })
       return
     }
 
@@ -53,7 +66,12 @@ export default function KitchenHubAuthorizePage() {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/login/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, captcha_token: captchaToken, connection_id: connectionId }),
+        body: JSON.stringify({
+          email,
+          password,
+          captcha_token: captchaToken,
+          connection_id: connectionId,
+        }),
       })
 
       const data = await response.json()
@@ -69,7 +87,7 @@ export default function KitchenHubAuthorizePage() {
         throw new Error(data?.message || "Login failed")
       }
 
-      // ✅ Redirect back with connection_id instead of state
+      // ✅ Successful login — redirect with connection_id
       Cookies.set("Token", data.token, { expires: 7 })
       login({ email, name: data.name || "Company User", type: "company" })
       toast({ title: "Authorized", description: "Redirecting to KitchenHub..." })
@@ -88,14 +106,22 @@ export default function KitchenHubAuthorizePage() {
     const tempToken = Cookies.get("TempToken")
 
     if (!twoFACode || twoFACode.length !== 6 || !tempToken) {
-      toast({ title: "Invalid code", description: "Enter a valid 6-digit 2FA code.", variant: "destructive" })
+      toast({
+        title: "Invalid code",
+        description: "Enter a valid 6-digit 2FA code.",
+        variant: "destructive",
+      })
       setVerifying2FA(false)
       return
     }
 
     const captchaToken = (window as any).grecaptcha?.getResponse()
     if (!captchaToken) {
-      toast({ title: "CAPTCHA required", description: "Please verify you're human.", variant: "destructive" })
+      toast({
+        title: "CAPTCHA required",
+        description: "Please verify you're human.",
+        variant: "destructive",
+      })
       setVerifying2FA(false)
       return
     }
@@ -128,10 +154,12 @@ export default function KitchenHubAuthorizePage() {
     }
   }
 
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
-      <div className="absolute inset-0 bg-cover bg-center opacity-70" style={{ backgroundImage: 'url("/agent-bg.jpg")' }} />
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-70"
+        style={{ backgroundImage: 'url("/agent-bg.jpg")' }}
+      />
 
       <div className="relative z-10 flex items-center justify-center h-screen px-8">
         <div className="w-full max-w-md bg-white/90 backdrop-blur-lg rounded-3xl p-8 shadow-2xl">
@@ -143,7 +171,9 @@ export default function KitchenHubAuthorizePage() {
           {!require2FA ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="email" className="text-gray-700 text-sm">Email</Label>
+                <Label htmlFor="email" className="text-gray-700 text-sm">
+                  Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -154,7 +184,9 @@ export default function KitchenHubAuthorizePage() {
                 />
               </div>
               <div>
-                <Label htmlFor="password" className="text-gray-700 text-sm">Password</Label>
+                <Label htmlFor="password" className="text-gray-700 text-sm">
+                  Password
+                </Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -170,12 +202,19 @@ export default function KitchenHubAuthorizePage() {
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
                   </button>
                 </div>
               </div>
 
-              <div className="g-recaptcha" data-sitekey="6Lfl9ZErAAAAAIOsgxGYsnBLhmOJLhafaXEW5Hia"></div>
+              <div
+                className="g-recaptcha"
+                data-sitekey="6Lfl9ZErAAAAAIOsgxGYsnBLhmOJLhafaXEW5Hia"
+              ></div>
 
               <Button
                 type="submit"
@@ -189,9 +228,13 @@ export default function KitchenHubAuthorizePage() {
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <ShieldCheck className="text-green-500 h-5 w-5" />
-                <h3 className="font-semibold text-gray-800">Two-Factor Authentication</h3>
+                <h3 className="font-semibold text-gray-800">
+                  Two-Factor Authentication
+                </h3>
               </div>
-              <Label htmlFor="2fa" className="text-gray-700 text-sm">Enter 6-digit code</Label>
+              <Label htmlFor="2fa" className="text-gray-700 text-sm">
+                Enter 6-digit code
+              </Label>
               <Input
                 id="2fa"
                 type="text"
