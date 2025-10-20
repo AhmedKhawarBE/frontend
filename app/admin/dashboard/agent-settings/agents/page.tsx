@@ -752,7 +752,7 @@ export default function CompanyAgentsPage() {
     }
 
     // ✅ LLM real_time checkbox
-    if (key === "real_time" && rootKey === "llm") {
+    if ((key === "real_time") && rootKey === "llm") {
       return (
         <div key={fullPath.join(".")} className="flex items-center justify-between bg-slate-50 px-4 py-3 rounded-xl shadow-sm">
           <Label className="font-medium">Real-Time</Label>
