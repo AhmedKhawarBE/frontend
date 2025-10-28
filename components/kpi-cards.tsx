@@ -70,16 +70,21 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 
-interface Message {
-  id: number
-  user: number
-  timestamp: string
-  sessionID: string
-  type: string
-  user_question: string
-  assistant_response: string
-  summary: string
-  phonenumber?: string
+interface CallStatsResponse {
+  summary: Record<
+    string,
+    {
+      total_calls: number
+      total_duration: string
+      average_duration_sec: number
+      total_duration_sec: number
+    }
+  >
+  daily: {
+    date: string
+    calls: number
+    total_duration_sec: number
+  }[]
 }
 
 export function KPICards() {
@@ -129,12 +134,12 @@ export function KPICards() {
     fetchData()
   }, [])
 
-  // Fetch and process conversations
+  // Fetch and process call stats
   useEffect(() => {
-    const fetchConversations = async () => {
+    async function fetchCallStats() {
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/conversations/messages/`,
+          `${process.env.NEXT_PUBLIC_BASE_URL}/conversations/messages/call_stats/`,
           {
             headers: {
               "Content-Type": "application/json",
@@ -143,57 +148,33 @@ export function KPICards() {
           }
         )
 
-        if (!res.ok) throw new Error("Failed to fetch conversations")
-        const data: Message[] = await res.json()
+        if (!res.ok) throw new Error("Failed to fetch call stats")
 
-        // Group by sessionID
-        const grouped = data.reduce<Record<string, Message[]>>((acc, msg) => {
-          if (!acc[msg.sessionID]) acc[msg.sessionID] = []
-          acc[msg.sessionID].push(msg)
-          return acc
-        }, {})
+        const data: CallStatsResponse = await res.json()
 
-        const numberStats: Record<string, { durations: number[] }> = {}
-        let durations: number[] = []
+        // Process summary data
+        const summary = data.summary || {}
+        let totalCallsSum = 0
+        let totalDurationSum = 0
+        const breakdown: Record<string, { calls: number; totalTime: number; avgTime: number }> = {}
 
-        for (const sessionID in grouped) {
-          const msgs = grouped[sessionID].sort(
-            (a, b) =>
-              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-          )
-          if (msgs.length >= 1) {
-            const start = new Date(msgs[0].timestamp).getTime()
-            const end = new Date(msgs[msgs.length - 1].timestamp).getTime()
-            const durationSec = Math.max(0, (end - start) / 1000)
+        for (const number in summary) {
+          const entry = summary[number]
+          const calls = entry.total_calls
+          const totalTime = entry.total_duration_sec
+          const avgTime = entry.average_duration_sec
 
-            durations.push(durationSec)
+          totalCallsSum += calls
+          totalDurationSum += totalTime
 
-            // latest message’s phone number
-            const latestNumber = msgs[msgs.length - 1].phonenumber || "Unknown"
-            if (!numberStats[latestNumber]) numberStats[latestNumber] = { durations: [] }
-            numberStats[latestNumber].durations.push(durationSec)
-          }
-        }
-
-        const total = durations.length
-        const sum = durations.reduce((acc, d) => acc + d, 0)
-        const avg = total > 0 ? sum / total : 0
-
-        setTotalCalls(total)
-        setTotalCallTime(sum)
-        setAverageCallTime(avg)
-
-        const breakdown: Record<
-          string,
-          { calls: number; totalTime: number; avgTime: number }
-        > = {}
-        for (const number in numberStats) {
-          const arr = numberStats[number].durations
-          const calls = arr.length
-          const totalTime = arr.reduce((a, b) => a + b, 0)
-          const avgTime = calls > 0 ? totalTime / calls : 0
           breakdown[number] = { calls, totalTime, avgTime }
         }
+
+        const avgOverall = totalCallsSum > 0 ? totalDurationSum / totalCallsSum : 0
+
+        setTotalCalls(totalCallsSum)
+        setTotalCallTime(totalDurationSum)
+        setAverageCallTime(avgOverall)
         setByNumber(breakdown)
       } catch (error) {
         console.error("Error fetching call KPIs:", error)
@@ -202,7 +183,7 @@ export function KPICards() {
       }
     }
 
-    fetchConversations()
+    fetchCallStats()
   }, [])
 
   const formatDuration = (seconds: number) => {
@@ -311,6 +292,7 @@ export function KPICards() {
     </>
   )
 }
+
 
 
 // "use client"

@@ -11,23 +11,40 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { ArrowRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
-interface Message {
-  id: number
-  user: number
-  timestamp: string
-  sessionID: string
-  type: string
-  user_question: string
-  assistant_response: string
-  summary: string
-  phonenumber?: string
+interface CallDaily {
+  date: string
+  calls: number
+  total_duration_sec: number
+}
+
+interface CallStatsResponse {
+  summary: Record<
+    string,
+    {
+      total_calls: number
+      total_duration: string
+      average_duration_sec: number
+      total_duration_sec: number
+    }
+  >
+  daily: CallDaily[]
 }
 
 export function MetricsGrid() {
-  const [callsData, setCallsData] = useState<number[]>([0, 0, 0, 0, 0, 0, 0])
-  const [durationData, setDurationData] = useState<number[]>([0, 0, 0, 0, 0, 0, 0])
+  const [allDailyData, setAllDailyData] = useState<CallDaily[]>([])
+  const [callsData, setCallsData] = useState<number[]>([])
+  const [durationData, setDurationData] = useState<number[]>([])
   const [dates, setDates] = useState<string[]>([])
+  const [filterDays, setFilterDays] = useState<number>(7)
 
   const [openMetric, setOpenMetric] = useState<null | {
     title: string
@@ -36,10 +53,10 @@ export function MetricsGrid() {
   }>(null)
 
   useEffect(() => {
-    async function fetchMessages() {
+    async function fetchCallStats() {
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/conversations/messages/`,
+          `${process.env.NEXT_PUBLIC_BASE_URL}/conversations/messages/call_stats/`,
           {
             method: "GET",
             headers: {
@@ -48,96 +65,82 @@ export function MetricsGrid() {
             },
           }
         )
-        if (!res.ok) throw new Error("Failed to fetch messages")
-        const data: Message[] = await res.json()
+        if (!res.ok) throw new Error("Failed to fetch call stats")
 
-        // group by session
-        const grouped = data.reduce<Record<string, Message[]>>((acc, msg) => {
-          if (!acc[msg.sessionID]) acc[msg.sessionID] = []
-          acc[msg.sessionID].push(msg)
-          return acc
-        }, {})
-
-        // build last 7 days buckets
-        const today = new Date()
-        const last7Days: string[] = []
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date(today)
-          d.setDate(today.getDate() - i)
-          last7Days.push(d.toISOString().split("T")[0]) // YYYY-MM-DD
-        }
-
-        const callsCount: Record<string, number> = {}
-        const durations: Record<string, number> = {}
-
-        Object.values(grouped).forEach((msgs) => {
-          const sorted = msgs.sort(
-            (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-          )
-          const start = new Date(sorted[0].timestamp)
-          const end = new Date(sorted[sorted.length - 1].timestamp)
-          const duration = Math.max(0, (end.getTime() - start.getTime()) / 60000) // minutes
-          const key = start.toISOString().split("T")[0]
-
-          callsCount[key] = (callsCount[key] || 0) + 1
-          durations[key] = (durations[key] || 0) + duration
-        })
-
-        // map into arrays for chart
-        const callsArr = last7Days.map((d) => callsCount[d] || 0)
-        const durationArr = last7Days.map((d) => durations[d] || 0)
-
-        setCallsData(callsArr)
-        setDurationData(durationArr)
-        setDates(last7Days)
+        const data: CallStatsResponse = await res.json()
+        const sorted = data.daily.sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        )
+        setAllDailyData(sorted)
+        applyFilter(sorted, filterDays)
       } catch (err) {
-        console.error(err)
+        console.error("Error fetching call stats:", err)
       }
     }
-
-    fetchMessages()
+    fetchCallStats()
   }, [])
+
+  useEffect(() => {
+    if (allDailyData.length > 0) applyFilter(allDailyData, filterDays)
+  }, [filterDays])
+
+  function applyFilter(data: CallDaily[], days: number) {
+    const filtered = data.slice(-days)
+    const datesArr = filtered.map((d) => d.date)
+    const callsArr = filtered.map((d) => d.calls)
+    const durationArr = filtered.map((d) => Math.round(d.total_duration_sec / 60))
+    setDates(datesArr)
+    setCallsData(callsArr)
+    setDurationData(durationArr)
+  }
+
+  // Dynamically reduce cluttered date labels
+  function getReducedDatesLabels(allDates: string[]): string[] {
+    if (allDates.length <= 10) return allDates
+    const step = Math.ceil(allDates.length / 10) // Always keep ~10 visible labels
+    return allDates.map((d, i) => (i % step === 0 ? d : ""))
+  }
 
   const metricsData = [
     {
       title: "Calls",
-      description: "The number of calls received.",
-      data: callsData,
-      dates,
+      description: "The number of calls received per day.",
+      data: callsData.length ? callsData : Array(7).fill(0),
+      dates: getReducedDatesLabels(dates),
       clickable: true,
     },
     {
       title: "Call Duration",
-      description: "The amount of time, in minutes, the total call lasted.",
-      data: durationData,
-      dates,
+      description: "Total duration of calls (in minutes) per day.",
+      data: durationData.length ? durationData : Array(7).fill(0),
+      dates: getReducedDatesLabels(dates),
       clickable: true,
     },
     {
       title: "Transfers",
       description: "The number of calls transferred.",
-      data: [0, 0, 0, 0, 0, 0, 0],
+      data: Array(7).fill(0),
       dates,
       clickable: false,
     },
     {
       title: "Transfer Duration",
-      description: "The amount of time, in minutes, the transferred call lasted.",
-      data: [0, 0, 0, 0, 0, 0, 0],
+      description: "Total duration (in minutes) of transferred calls.",
+      data: Array(7).fill(0),
       dates,
       clickable: false,
     },
     {
       title: "Transfer Time",
-      description: "The amount of time, in seconds, until the call was transferred.",
-      data: [0, 0, 0, 0, 0, 0, 0],
+      description: "The time (in seconds) until the call was transferred.",
+      data: Array(7).fill(0),
       dates,
       clickable: false,
     },
     {
       title: "Transfer Rate",
-      description: "The percentage of calls transferred.",
-      data: [0, 0, 0, 0, 0, 0, 0],
+      description: "Percentage of calls transferred.",
+      data: Array(7).fill(0),
       dates,
       clickable: false,
     },
@@ -145,16 +148,35 @@ export function MetricsGrid() {
 
   return (
     <>
+      {/* === Filters Section (Left-Aligned Dropdown) === */}
+      <div className="flex justify-start mb-6">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-slate-600 font-medium">Filter by:</span>
+          <Select
+            value={filterDays.toString()}
+            onValueChange={(v) => setFilterDays(Number(v))}
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Select range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">Last 7 Days</SelectItem>
+              <SelectItem value="10">Last 10 Days</SelectItem>
+              <SelectItem value="30">Last 30 Days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* === Metrics Grid === */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {metricsData.map((metric, index) => (
           <Card
             key={index}
-            className={`bg-white border border-slate-200 ${
+            className={`bg-white border border-slate-200 transition hover:shadow-md ${
               metric.clickable ? "cursor-pointer" : ""
             }`}
-            onClick={() =>
-              metric.clickable ? setOpenMetric(metric) : null
-            }
+            onClick={() => (metric.clickable ? setOpenMetric(metric) : null)}
           >
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
@@ -164,20 +186,21 @@ export function MetricsGrid() {
               </div>
             </CardHeader>
             <CardContent className="pt-0 relative">
-              <div className="h-32 mb-4">
+              <div className={`mb-4 ${filterDays > 10 ? "h-44" : "h-32"}`}>
                 <MetricChart data={metric.data} dates={metric.dates} />
               </div>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {metric.description}
               </p>
-              {/* Arrow in bottom-right */}
-              <ArrowRight className="w-4 h-4 text-slate-400 absolute bottom-2 right-2" />
+              {metric.clickable && (
+                <ArrowRight className="w-4 h-4 text-slate-400 absolute bottom-2 right-2" />
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Dialog for big chart */}
+      {/* === Dialog (Expanded Chart View) === */}
       <Dialog open={!!openMetric} onOpenChange={() => setOpenMetric(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
@@ -185,7 +208,10 @@ export function MetricsGrid() {
           </DialogHeader>
           <div className="h-96">
             {openMetric && (
-              <MetricChart data={openMetric.data} dates={openMetric.dates} />
+              <MetricChart
+                data={openMetric.data}
+                dates={getReducedDatesLabels(openMetric.dates)}
+              />
             )}
           </div>
         </DialogContent>
