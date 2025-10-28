@@ -1100,7 +1100,12 @@ const res = await fetch(url, {
     setStep(1) // or setOpen(false) if it's in a modal/drawer
     onSuccess?.()
 
+    if (tool){
+toast({ title: "Success", description: "Custom feature updated!" })
+    }
+    else{
     toast({ title: "Success", description: "Custom feature created!" })
+    }
   } catch (err) {
     console.error("Submit failed", err)
     toast({
